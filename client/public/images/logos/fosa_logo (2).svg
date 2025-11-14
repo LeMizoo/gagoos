@@ -1,0 +1,54 @@
+<svg viewBox="0 0 400 150" xmlns="http://www.w3.org/2000/svg">
+  <!-- Forme fusionnée : cercle + rectangle arrondi -->
+  <path d="M 10 75 
+           A 65 65 0 1 1 140 75
+           L 300 75
+           A 40 40 0 0 1 300 35
+           L 300 115
+           A 40 40 0 0 1 300 75
+           L 140 75
+           Z" 
+           fill="#000" stroke="#000" stroke-width="2"/>
+  
+  <!-- Tête du fosa -->
+  <g transform="translate(75, 75)">
+    <!-- Forme principale de la tête -->
+    <ellipse cx="0" cy="-5" rx="35" ry="30" fill="#FFF"/>
+    
+    <!-- Museau -->
+    <ellipse cx="0" cy="15" rx="20" ry="15" fill="#E0E0E0"/>
+    
+    <!-- Oreilles -->
+    <ellipse cx="-25" cy="-25" rx="12" ry="18" fill="#666"/>
+    <ellipse cx="25" cy="-25" rx="12" ry="18" fill="#666"/>
+    <ellipse cx="-25" cy="-25" rx="8" ry="12" fill="#FFF"/>
+    <ellipse cx="25" cy="-25" rx="8" ry="12" fill="#FFF"/>
+    
+    <!-- Yeux -->
+    <ellipse cx="-12" cy="-8" rx="6" ry="8" fill="#000"/>
+    <ellipse cx="12" cy="-8" rx="6" ry="8" fill="#000"/>
+    <ellipse cx="-12" cy="-10" rx="3" ry="4" fill="#CCC"/>
+    <ellipse cx="12" cy="-10" rx="3" ry="4" fill="#CCC"/>
+    <ellipse cx="-11" cy="-12" rx="1.5" ry="2" fill="#000"/>
+    <ellipse cx="13" cy="-12" rx="1.5" ry="2" fill="#000"/>
+    
+    <!-- Reflets dans les yeux -->
+    <circle cx="-10" cy="-13" r="1" fill="#FFF"/>
+    <circle cx="14" cy="-13" r="1" fill="#FFF"/>
+    
+    <!-- Nez -->
+    <ellipse cx="0" cy="8" rx="4" ry="3" fill="#000"/>
+    
+    <!-- Bouche -->
+    <path d="M -8 18 Q 0 22 8 18" stroke="#000" stroke-width="2" fill="none"/>
+    
+    <!-- Moustaches -->
+    <line x1="-30" y1="5" x2="-20" y2="8" stroke="#000" stroke-width="1.5"/>
+    <line x1="-30" y1="12" x2="-20" y2="12" stroke="#000" stroke-width="1.5"/>
+    <line x1="30" y1="5" x2="20" y2="8" stroke="#000" stroke-width="1.5"/>
+    <line x1="30" y1="12" x2="20" y2="12" stroke="#000" stroke-width="1.5"/>
+  </g>
+  
+  <!-- Texte "fosa" -->
+  <text x="200" y="90" font-family="Arial, sans-serif" font-size="48" font-weight="bold" font-style="italic" fill="#FFF" stroke="#000" stroke-width="1" paint-order="stroke fill">fosa</text>
+</svg>

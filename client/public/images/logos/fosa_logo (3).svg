@@ -1,0 +1,57 @@
+<svg viewBox="0 0 420 170" xmlns="http://www.w3.org/2000/svg">
+  <!-- Rectangle principal avec bordures arrondies -->
+  <rect x="10" y="10" width="400" height="150" rx="20" ry="20" fill="#FFF" stroke="#000" stroke-width="3"/>
+  
+  <!-- Forme fusionnée : cercle + rectangle arrondi -->
+  <path d="M 30 85 
+           A 55 55 0 1 1 140 85
+           L 370 85
+           A 35 35 0 0 1 370 50
+           L 370 120
+           A 35 35 0 0 1 370 85
+           L 140 85
+           Z" 
+           fill="#000" stroke="#000" stroke-width="2"/>
+  
+  <!-- Tête du fosa -->
+  <g transform="translate(85, 85)">
+    <!-- Forme principale de la tête -->
+    <ellipse cx="0" cy="-5" rx="30" ry="25" fill="#FFF"/>
+    
+    <!-- Museau -->
+    <ellipse cx="0" cy="12" rx="17" ry="12" fill="#E0E0E0"/>
+    
+    <!-- Oreilles -->
+    <ellipse cx="-22" cy="-22" rx="10" ry="15" fill="#666"/>
+    <ellipse cx="22" cy="-22" rx="10" ry="15" fill="#666"/>
+    <ellipse cx="-22" cy="-22" rx="7" ry="10" fill="#FFF"/>
+    <ellipse cx="22" cy="-22" rx="7" ry="10" fill="#FFF"/>
+    
+    <!-- Yeux -->
+    <ellipse cx="-10" cy="-7" rx="5" ry="6" fill="#000"/>
+    <ellipse cx="10" cy="-7" rx="5" ry="6" fill="#000"/>
+    <ellipse cx="-10" cy="-8" rx="2.5" ry="3" fill="#CCC"/>
+    <ellipse cx="10" cy="-8" rx="2.5" ry="3" fill="#CCC"/>
+    <ellipse cx="-9" cy="-10" rx="1.2" ry="1.5" fill="#000"/>
+    <ellipse cx="11" cy="-10" rx="1.2" ry="1.5" fill="#000"/>
+    
+    <!-- Reflets dans les yeux -->
+    <circle cx="-8.5" cy="-11" r="0.8" fill="#FFF"/>
+    <circle cx="11.5" cy="-11" r="0.8" fill="#FFF"/>
+    
+    <!-- Nez -->
+    <ellipse cx="0" cy="6" rx="3" ry="2.5" fill="#000"/>
+    
+    <!-- Bouche -->
+    <path d="M -6 15 Q 0 18 6 15" stroke="#000" stroke-width="1.5" fill="none"/>
+    
+    <!-- Moustaches -->
+    <line x1="-25" y1="3" x2="-17" y2="5" stroke="#000" stroke-width="1"/>
+    <line x1="-25" y1="8" x2="-17" y2="8" stroke="#000" stroke-width="1"/>
+    <line x1="25" y1="3" x2="17" y2="5" stroke="#000" stroke-width="1"/>
+    <line x1="25" y1="8" x2="17" y2="8" stroke="#000" stroke-width="1"/>
+  </g>
+  
+  <!-- Texte "fosa" -->
+  <text x="250" y="95" font-family="Arial, sans-serif" font-size="40" font-weight="bold" font-style="italic" fill="#FFF" stroke="#000" stroke-width="1" paint-order="stroke fill">fosa</text>
+</svg>
