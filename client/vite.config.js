@@ -11,5 +11,25 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  // ✅ CONFIGURATION VERCEL - NOUVEAU
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+    minify: 'terser',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          ui: ['react-router-dom']
+        }
+      }
+    }
+  },
+  // ✅ Important pour le routing SPA sur Vercel
+  base: './',
+  // ✅ Optimisations pour la production
+  esbuild: {
+    drop: ['console', 'debugger']
   }
 })
