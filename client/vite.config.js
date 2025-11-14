@@ -12,11 +12,12 @@ export default defineConfig({
       }
     }
   },
-  // ✅ CONFIGURATION VERCEL - NOUVEAU
+  // ✅ CONFIGURATION VERCEL SIMPLIFIÉE
   build: {
     outDir: 'dist',
     sourcemap: false,
-    minify: 'terser',
+    // ✅ Utiliser esbuild au lieu de terser
+    minify: 'esbuild',
     rollupOptions: {
       output: {
         manualChunks: {
@@ -26,10 +27,5 @@ export default defineConfig({
       }
     }
   },
-  // ✅ Important pour le routing SPA sur Vercel
-  base: './',
-  // ✅ Optimisations pour la production
-  esbuild: {
-    drop: ['console', 'debugger']
-  }
+  base: './'
 })
