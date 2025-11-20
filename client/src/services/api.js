@@ -1,6 +1,5 @@
 import axios from 'axios';
 
-// 👉 Utiliser l'URL publique de ton backend Render
 const API_BASE_URL = 'https://bygagoos-backend.onrender.com/api';
 
 const api = axios.create({
@@ -19,9 +18,7 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 export const authAPI = {
