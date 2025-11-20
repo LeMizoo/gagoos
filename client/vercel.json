@@ -11,8 +11,10 @@
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
-      "dest": "https://bygagoos-backend.onrender.com/api/$1"
+      "src": "/assets/(.*)",
+      "headers": {
+        "Content-Type": "application/javascript"
+      }
     },
     {
       "src": "/(.*)",
