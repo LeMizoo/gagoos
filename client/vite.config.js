@@ -17,16 +17,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    emptyOutDir: true,
-    // AJOUTER CES LIGNES
-    rollupOptions: {
-      output: {
-        manualChunks: undefined,
-        entryFileNames: 'assets/[name].js',
-        chunkFileNames: 'assets/[name].js',
-        assetFileNames: 'assets/[name].[ext]'
-      }
-    }
+    emptyOutDir: true
   },
-  base: '/',
+  base: './',
 })
