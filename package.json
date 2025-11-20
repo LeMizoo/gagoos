@@ -1,31 +1,37 @@
 {
-  "name": "bygagoos-avant-push",
-  "private": true,
+  "name": "bygagoos-fullstack",
   "version": "2.0.0",
-  "type": "commonjs",
-  "workspaces": [
-    "client",
-    "server"
-  ],
+  "description": "ByGagoos - Gestion d'entreprise textile complète",
+  "type": "module",
   "scripts": {
-    "dev:all": "concurrently \"npm --prefix client run dev\" \"npm --prefix server run dev\"",
-    "dev": "npm run dev:all",
-    "build": "npm run build:all",
-    "build:all": "npm run build:client && npm run build:server",
-    "build:client": "npm --prefix client run build",
-    "build:server": "npm --prefix server run build",
-    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
-    "start": "npm --prefix server start",
-    "start:client": "npm --prefix client start",
-    "start:server": "npm --prefix server start",
-    "test": "echo \"No tests configured at root\""
+    "dev": "concurrently \"npm run dev:client\" \"npm run dev:server\"",
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "cd client && npm run build",
+    "build:server": "cd server && npm run build",
+    "start": "cd server && npm start",
+    "vercel-build": "cd client && npm run build",
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/LeMizoo/gagoos.git"
+    "url": "https://github.com/LeMizoo/bygagoos.git"
   },
+  "keywords": [
+    "bygagoos",
+    "textile",
+    "management",
+    "react",
+    "express",
+    "postgresql"
+  ],
+  "author": "LeMizoo",
   "license": "ISC",
   "devDependencies": {
     "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }
