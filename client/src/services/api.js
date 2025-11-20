@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+// 👉 Utiliser l'URL publique de ton backend Render
+const API_BASE_URL = 'https://bygagoos-backend.onrender.com/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
