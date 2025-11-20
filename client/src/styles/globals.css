@@ -1,0 +1,30 @@
+/* styles/globals.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --bleu-serigraphie: #1E40AF;
+    --orange-creatif: #EA580C;
+    --gris-professionnel: #6B7280;
+    --beige-fond: #F5E9D7;
+    --texte-principal: #4B2E39;
+}
+
+body {
+    background-color: var(--beige-fond);
+    color: var(--texte-principal);
+    font-family: 'Inter', sans-serif;
+}
+
+.bg-bleu-serigraphie {
+    background-color: var(--bleu-serigraphie);
+}
+
+.text-orange-creatif {
+    color: var(--orange-creatif);
+}
+
+.border-orange-creatif {
+    border-color: var(--orange-creatif);
+}

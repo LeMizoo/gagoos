@@ -1,0 +1,241 @@
+/* RESET COMPLET DES MARGES GLOBALES */
+.dashboard-page {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100%;
+  min-height: calc(100vh - 64px);
+}
+
+.dashboard-container {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* HEADER SANS MARGES */
+.page-header {
+  margin: 0 !important;
+  padding: 1.5rem !important;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  width: 100%;
+}
+
+.page-header h1 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.875rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.page-header p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 1rem;
+}
+
+/* CONTENEUR PRINCIPAL */
+.dashboard-content {
+  margin: 0 !important;
+  padding: 1.5rem !important;
+  width: 100%;
+  min-height: calc(100vh - 120px);
+}
+
+/* SECTIONS SANS MARGES */
+.dashboard-section {
+  margin: 0 !important;
+  padding: 1.5rem !important;
+  width: 100%;
+}
+
+/* GRID SANS ESPACEMENT EXTERNE */
+.stats-grid {
+  margin: 0 !important;
+  gap: 1.5rem;
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+
+/* CARDS AVEC PADDING INTERNE SEULEMENT */
+.stat-card {
+  margin: 0 !important;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.stat-card h3 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-card .value {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.stat-card .trend {
+  display: flex;
+  align-items: center;
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.trend.positive {
+  color: #10b981;
+}
+
+.trend.negative {
+  color: #ef4444;
+}
+
+/* WELCOME SECTION */
+.welcome-section {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2rem !important;
+  border-radius: 0.75rem;
+  margin-bottom: 1.5rem !important;
+}
+
+.welcome-section h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.welcome-section p {
+  margin: 0;
+  opacity: 0.9;
+}
+
+/* QUICK ACTIONS */
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 !important;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem 1.5rem;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  text-decoration: none;
+  color: #374151;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.action-btn:hover {
+  border-color: #6366f1;
+  color: #6366f1;
+  transform: translateY(-1px);
+}
+
+.action-btn .icon {
+  font-size: 1.25rem;
+}
+
+/* RECENT ACTIVITY */
+.activity-list {
+  background: white;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  overflow: hidden;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.activity-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eff6ff;
+  color: #3b82f6;
+}
+
+.activity-content {
+  flex: 1;
+}
+
+.activity-content p {
+  margin: 0 0 0.25rem 0;
+  color: #111827;
+}
+
+.activity-time {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+/* RESPONSIVE MOBILE */
+@media (max-width: 768px) {
+  .page-header {
+    padding: 1rem !important;
+  }
+
+  .dashboard-content {
+    padding: 1rem !important;
+  }
+
+  .dashboard-section {
+    padding: 1rem !important;
+  }
+
+  .stat-card {
+    padding: 1rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .quick-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .welcome-section {
+    padding: 1.5rem !important;
+  }
+
+  .activity-item {
+    padding: 0.75rem 1rem;
+  }
+}

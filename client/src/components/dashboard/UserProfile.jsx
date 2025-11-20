@@ -66,9 +66,8 @@ const UserProfile = () => {
       </div>
 
       {message && (
-        <div className={`mb-4 p-3 rounded ${
-          message.includes('Erreur') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
-        }`}>
+        <div className={`mb-4 p-3 rounded ${message.includes('Erreur') ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
+          }`}>
           {message}
         </div>
       )}
@@ -104,7 +103,7 @@ const UserProfile = () => {
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Email
@@ -119,7 +118,7 @@ const UserProfile = () => {
                   required
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Localisation
@@ -133,7 +132,7 @@ const UserProfile = () => {
                   placeholder="Votre ville"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Bio
@@ -147,16 +146,16 @@ const UserProfile = () => {
                   placeholder="Parlez-nous de vous..."
                 />
               </div>
-              
+
               <div className="flex space-x-2">
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="btn btn-primary"
                   disabled={loading}
                 >
                   {loading ? 'Enregistrement...' : 'Enregistrer les modifications'}
                 </button>
-                <button 
+                <button
                   type="button"
                   onClick={() => setIsEditing(false)}
                   className="btn btn-outline"
@@ -175,7 +174,7 @@ const UserProfile = () => {
                   <p className="font-semibold">{user?.name || 'Non renseigné'}</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-3">
                 <Mail className="h-5 w-5 text-gray-400" />
                 <div>
@@ -183,7 +182,7 @@ const UserProfile = () => {
                   <p className="font-semibold">{user?.email}</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-3">
                 <MapPin className="h-5 w-5 text-gray-400" />
                 <div>
@@ -191,7 +190,7 @@ const UserProfile = () => {
                   <p className="font-semibold">{user?.location || 'Non renseignée'}</p>
                 </div>
               </div>
-              
+
               <div className="flex items-center space-x-3">
                 <Calendar className="h-5 w-5 text-gray-400" />
                 <div>
@@ -201,7 +200,7 @@ const UserProfile = () => {
                   </p>
                 </div>
               </div>
-              
+
               {user?.bio && (
                 <div>
                   <p className="text-sm text-gray-500 mb-1">Bio</p>

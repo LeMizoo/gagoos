@@ -37,12 +37,12 @@ const PostsManager = () => {
     e.preventDefault();
     try {
       const token = localStorage.getItem('token');
-      const url = editingPost 
+      const url = editingPost
         ? `http://localhost:5000/api/posts/${editingPost.id}`
         : 'http://localhost:5000/api/posts';
-      
+
       const method = editingPost ? 'PUT' : 'POST';
-      
+
       const response = await fetch(url, {
         method,
         headers: {
@@ -65,7 +65,7 @@ const PostsManager = () => {
 
   const handleDelete = async (postId) => {
     if (!window.confirm('Supprimer ce post ?')) return;
-    
+
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`http://localhost:5000/api/posts/${postId}`, {
@@ -123,7 +123,7 @@ const PostsManager = () => {
                   placeholder="Titre du post"
                 />
               </div>
-              
+
               <div>
                 <label className="label">Contenu</label>
                 <textarea
@@ -134,7 +134,7 @@ const PostsManager = () => {
                   placeholder="Contenu de votre post..."
                 />
               </div>
-              
+
               <div className="flex space-x-2 justify-end">
                 <button
                   type="button"
@@ -187,7 +187,7 @@ const PostsManager = () => {
             </div>
           </div>
         ))}
-        
+
         {posts.length === 0 && (
           <div className="text-center py-12">
             <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />

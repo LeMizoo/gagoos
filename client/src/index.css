@@ -148,33 +148,38 @@ code {
 
 /* Animations */
 @keyframes fadeIn {
-  from { 
-    opacity: 0; 
-    transform: translateY(10px); 
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
 @keyframes slideIn {
-  from { 
-    opacity: 0; 
-    transform: translateX(-20px); 
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
   }
-  to { 
-    opacity: 1; 
-    transform: translateX(0); 
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
 @keyframes pulse {
-  0%, 100% { 
-    opacity: 1; 
+
+  0%,
+  100% {
+    opacity: 1;
   }
-  50% { 
-    opacity: 0.5; 
+
+  50% {
+    opacity: 0.5;
   }
 }
 
@@ -241,7 +246,8 @@ code {
 }
 
 .modal-content {
-  @apply bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-auto; /* max-h-90vh remplacé par max-h-[90vh] */
+  @apply bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-auto;
+  /* max-h-90vh remplacé par max-h-[90vh] */
 }
 
 /* Responsive utilities */
@@ -249,7 +255,7 @@ code {
   .mobile-hidden {
     display: none;
   }
-  
+
   .mobile-full {
     width: 100%;
   }
@@ -272,7 +278,7 @@ code {
   .no-print {
     display: none !important;
   }
-  
+
   .print-break {
     page-break-after: always;
   }
@@ -281,7 +287,9 @@ code {
 /* Classes utilitaires personnalisées */
 .max-h-90vh {
   max-height: 90vh;
-}@tailwind base;
+}
+
+@tailwind base;
 @tailwind components;
 @tailwind utilities;
 
@@ -431,33 +439,38 @@ code {
 
 /* Animations */
 @keyframes fadeIn {
-  from { 
-    opacity: 0; 
-    transform: translateY(10px); 
+  from {
+    opacity: 0;
+    transform: translateY(10px);
   }
-  to { 
-    opacity: 1; 
-    transform: translateY(0); 
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
 @keyframes slideIn {
-  from { 
-    opacity: 0; 
-    transform: translateX(-20px); 
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
   }
-  to { 
-    opacity: 1; 
-    transform: translateX(0); 
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }
 
 @keyframes pulse {
-  0%, 100% { 
-    opacity: 1; 
+
+  0%,
+  100% {
+    opacity: 1;
   }
-  50% { 
-    opacity: 0.5; 
+
+  50% {
+    opacity: 0.5;
   }
 }
 
@@ -524,7 +537,8 @@ code {
 }
 
 .modal-content {
-  @apply bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-auto; /* max-h-90vh remplacé par max-h-[90vh] */
+  @apply bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-auto;
+  /* max-h-90vh remplacé par max-h-[90vh] */
 }
 
 /* Responsive utilities */
@@ -532,7 +546,7 @@ code {
   .mobile-hidden {
     display: none;
   }
-  
+
   .mobile-full {
     width: 100%;
   }
@@ -555,7 +569,7 @@ code {
   .no-print {
     display: none !important;
   }
-  
+
   .print-break {
     page-break-after: always;
   }

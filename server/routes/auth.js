@@ -1,150 +1,281 @@
 const express = require('express');
-const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const db = require('../config/database');
+const rateLimit = require('express-rate-limit');
+const { pool } = require('../config/database');
+const { validateLoginInput, validateRegistration } = require('../middleware/validation');
+const { generateToken, auth } = require('../middleware/auth');
 
-// Route d'inscription
-router.post('/register', async (req, res) => {
-  try {
-    const { name, email, password } = req.body;
+const router = express.Router();
 
-    console.log('Données reçues:', { name, email, password });
-
-    // Validation des champs
-    if (!name || !email || !password) {
-      return res.status(400).json({ 
-        message: 'Tous les champs sont obligatoires' 
-      });
-    }
-
-    // Vérifier si l'utilisateur existe déjà
-    const userExists = await db.query('SELECT * FROM users WHERE email = $1', [email]);
-    
-    if (userExists.rows.length > 0) {
-      return res.status(400).json({ 
-        message: 'Un utilisateur avec cet email existe déjà' 
-      });
-    }
-
-    // Hacher le mot de passe
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-
-    // Insérer le nouvel utilisateur
-    const newUser = await db.query(
-      'INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email, created_at',
-      [name, email, hashedPassword]
-    );
-
-    // Générer un token JWT
-    const token = jwt.sign(
-      { id: newUser.rows[0].id },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
-
-    res.status(201).json({
-      token,
-      user: {
-        id: newUser.rows[0].id,
-        name: newUser.rows[0].name,
-        email: newUser.rows[0].email,
-        createdAt: newUser.rows[0].created_at
-      }
-    });
-
-  } catch (error) {
-    console.error('Erreur inscription:', error);
-    res.status(500).json({ 
-      message: 'Erreur serveur lors de l\'inscription',
-      error: error.message 
-    });
+// Limiteur spécifique pour les routes d'auth (protéger contre le brute-force)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // maximum 10 requêtes par IP par fenêtre
+  message: {
+    success: false,
+    message: 'Trop de tentatives. Veuillez réessayer plus tard.'
   }
 });
 
-// Route de connexion
-router.post('/login', async (req, res) => {
+// Route d'inscription améliorée
+router.post('/register', authLimiter, validateRegistration, async (req, res) => {
   try {
-    const { email, password } = req.body;
+    console.log('📝 Tentative d\'inscription:', req.body.email);
 
-    // Validation
-    if (!email || !password) {
-      return res.status(400).json({ 
-        message: 'Email et mot de passe requis' 
+    const { prenom, nom, email, password, role, departement } = req.body;
+
+    // Vérifier que la clé JWT existe
+    if (!process.env.JWT_SECRET) {
+      console.error('❌ JWT_SECRET non défini');
+      return res.status(500).json({
+        success: false,
+        message: 'Configuration serveur manquante'
       });
     }
 
-    // Vérifier si l'utilisateur existe
-    const userResult = await db.query('SELECT * FROM users WHERE email = $1', [email]);
-    
-    if (userResult.rows.length === 0) {
-      return res.status(400).json({ 
-        message: 'Email ou mot de passe incorrect' 
+    const normalizedEmail = String(email).trim().toLowerCase();
+
+    // Vérifier si l'utilisateur existe déjà
+    const existingUser = await pool.query('SELECT * FROM users WHERE email = $1', [normalizedEmail]);
+    if (existingUser.rows.length > 0) {
+      console.log('❌ Utilisateur existe déjà:', normalizedEmail);
+      return res.status(400).json({
+        success: false,
+        message: 'Un utilisateur avec cet email existe déjà'
       });
     }
 
-    const user = userResult.rows[0];
+    // Hasher le mot de passe
+    const hashedPassword = await bcrypt.hash(password, 12);
+    console.log('🔑 Mot de passe hashé');
 
-    // Vérifier le mot de passe
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    
-    if (!isPasswordValid) {
-      return res.status(400).json({ 
-        message: 'Email ou mot de passe incorrect' 
-      });
-    }
-
-    // Générer le token
-    const token = jwt.sign(
-      { id: user.id },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
+    // Insérer le nouvel utilisateur
+    const result = await pool.query(
+      `INSERT INTO users (prenom, nom, email, password, role, departement) 
+       VALUES ($1, $2, $3, $4, $5, $6) 
+       RETURNING id, prenom, nom, email, role, departement, created_at`,
+      [prenom, nom, normalizedEmail, hashedPassword, role || 'salarie', departement || 'Production']
     );
 
-    res.json({
+    const user = result.rows[0];
+    console.log('✅ Utilisateur créé:', user.email);
+
+    // Générer le token JWT
+    const token = generateToken(user.id);
+
+    res.status(201).json({
+      success: true,
+      message: 'Utilisateur créé avec succès',
       token,
       user: {
         id: user.id,
-        name: user.name,
+        prenom: user.prenom,
+        nom: user.nom,
         email: user.email,
-        createdAt: user.created_at
+        role: user.role,
+        departement: user.departement
       }
     });
-
   } catch (error) {
-    console.error('Erreur connexion:', error);
-    res.status(500).json({ 
-      message: 'Erreur serveur lors de la connexion' 
+    console.error('💥 Erreur inscription:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la création de l\'utilisateur',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
 
-// Route pour récupérer le profil utilisateur
-router.get('/me', async (req, res) => {
+// Pour la compatibilité, on peut aussi renvoyer le token en cookie HttpOnly
+const setAuthCookie = (res, token) => {
+  const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 24 * 60 * 60 * 1000 // 24h
+  };
+  res.cookie('token', token, cookieOptions);
+};
+
+// Route de connexion améliorée
+router.post('/login', authLimiter, validateLoginInput, async (req, res) => {
+  console.log('🔐 TENTATIVE DE CONNEXION - Données reçues:', req.body);
+
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    
-    if (!token) {
-      return res.status(401).json({ message: 'Token manquant' });
+    const { email, password } = req.body;
+
+    if (!process.env.JWT_SECRET) {
+      console.error('❌ JWT_SECRET non défini');
+      return res.status(500).json({
+        success: false,
+        message: 'Configuration serveur manquante'
+      });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const userResult = await db.query(
-      'SELECT id, name, email, created_at FROM users WHERE id = $1',
-      [decoded.id]
+    const normalizedEmail = String(email).trim().toLowerCase();
+    console.log('📧 Recherche utilisateur:', normalizedEmail);
+
+    // Trouver l'utilisateur
+    const result = await pool.query('SELECT * FROM users WHERE email = $1 AND is_active = true', [normalizedEmail]);
+    console.log('👤 Résultat recherche:', result.rows.length, 'utilisateur(s) trouvé(s)');
+
+    if (result.rows.length === 0) {
+      console.log('❌ Aucun utilisateur trouvé');
+      return res.status(401).json({
+        success: false,
+        message: 'Email ou mot de passe incorrect'
+      });
+    }
+
+    const user = result.rows[0];
+    console.log('🔑 Comparaison mot de passe...');
+
+    // Vérifier le mot de passe
+    const validPassword = await bcrypt.compare(password, user.password);
+    console.log('✅ Mot de passe valide:', validPassword);
+
+    if (!validPassword) {
+      console.log('❌ Mot de passe invalide');
+      return res.status(401).json({
+        success: false,
+        message: 'Email ou mot de passe incorrect'
+      });
+    }
+
+    // Mettre à jour la dernière connexion
+    await pool.query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
+
+    // Générer le token JWT
+    const token = generateToken(user.id);
+
+    // Définir cookie HttpOnly pour les clients compatibles
+    try {
+      setAuthCookie(res, token);
+      console.log('🍪 Cookie auth défini');
+    } catch (e) {
+      console.log('⚠️  Cookie non défini:', e.message);
+    }
+
+    console.log('🎉 Connexion réussie pour:', user.email);
+
+    res.json({
+      success: true,
+      message: 'Connexion réussie',
+      token,
+      user: {
+        id: user.id,
+        prenom: user.prenom,
+        nom: user.nom,
+        email: user.email,
+        role: user.role,
+        departement: user.departement,
+        phone: user.phone
+      }
+    });
+  } catch (error) {
+    console.error('💥 ERREUR CRITIQUE login:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la connexion',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Route pour vérifier le token
+router.get('/verify', auth, (req, res) => {
+  console.log('🔍 Vérification token pour:', req.user.email);
+  res.json({
+    success: true,
+    valid: true,
+    user: {
+      id: req.user.id,
+      prenom: req.user.prenom,
+      nom: req.user.nom,
+      email: req.user.email,
+      role: req.user.role,
+      departement: req.user.departement
+    }
+  });
+});
+
+// Route pour récupérer le profil utilisateur
+router.get('/profile', auth, async (req, res) => {
+  try {
+    console.log('👤 Récupération profil pour:', req.user.id);
+
+    const result = await pool.query(
+      'SELECT id, prenom, nom, email, role, departement, phone, created_at FROM users WHERE id = $1',
+      [req.user.id]
     );
 
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ message: 'Utilisateur non trouvé' });
+    if (result.rows.length === 0) {
+      console.log('❌ Utilisateur non trouvé:', req.user.id);
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      });
     }
 
-    res.json(userResult.rows[0]);
-
+    console.log('✅ Profil récupéré:', result.rows[0].email);
+    res.json({
+      success: true,
+      user: result.rows[0]
+    });
   } catch (error) {
-    console.error('Erreur récupération profil:', error);
-    res.status(401).json({ message: 'Token invalide' });
+    console.error('💥 Erreur profil:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la récupération du profil',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
+});
+
+// Route pour mettre à jour le profil
+router.put('/profile', auth, async (req, res) => {
+  try {
+    console.log('✏️  Mise à jour profil pour:', req.user.id, req.body);
+
+    const { prenom, nom, phone } = req.body;
+    const userId = req.user.id;
+
+    const result = await pool.query(
+      `UPDATE users SET prenom = $1, nom = $2, phone = $3, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = $4 
+       RETURNING id, email, prenom, nom, phone, role, departement`,
+      [prenom, nom, phone, userId]
+    );
+
+    console.log('✅ Profil mis à jour:', result.rows[0].email);
+
+    res.json({
+      success: true,
+      message: 'Profil mis à jour avec succès',
+      user: result.rows[0]
+    });
+  } catch (error) {
+    console.error('💥 Erreur mise à jour profil:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de la mise à jour du profil',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Route de déconnexion
+router.post('/logout', auth, (req, res) => {
+  console.log('🚪 Déconnexion pour:', req.user.email);
+
+  // Effacer le cookie
+  res.clearCookie('token');
+
+  res.json({
+    success: true,
+    message: 'Déconnexion réussie'
+  });
 });
 
 module.exports = router;

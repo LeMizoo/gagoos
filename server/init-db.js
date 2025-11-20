@@ -1,75 +1,52 @@
-const { Pool } = require('pg');
-require('dotenv').config();
-
-const config = {
-  user: process.env.DB_USER || 'postgres',
-  host: process.env.DB_HOST || 'localhost',
-  database: 'postgres', // On se connecte d'abord à la DB par défaut
-  password: process.env.DB_PASSWORD || 'votre_mot_de_passe',
-  port: process.env.DB_PORT || 5432,
-};
-
-const pool = new Pool(config);
+const { pool } = require('./config/database');
+const fs = require('fs');
+const path = require('path');
 
 async function initializeDatabase() {
-  let client;
   try {
-    client = await pool.connect();
-    console.log('✅ Connecté à PostgreSQL');
-
-    // Créer la base de données
-    await client.query('CREATE DATABASE bygagoos');
-    console.log('✅ Base de données "bygagoos" créée');
-
-  } catch (error) {
-    if (error.code === '42P04') {
-      console.log('ℹ️  La base de données "bygagoos" existe déjà');
-    } else {
-      console.error('❌ Erreur création DB:', error.message);
+    console.log('🗄️  Initialisation de la base de données...');
+    
+    // Lire et exécuter le schéma SQL
+    const schemaPath = path.join(__dirname, 'database.sql');
+    const schemaSQL = fs.readFileSync(schemaPath, 'utf8');
+    
+    // Séparer les instructions SQL
+    const statements = schemaSQL.split(';').filter(stmt => stmt.trim());
+    
+    for (const statement of statements) {
+      if (statement.trim()) {
+        try {
+          await pool.query(statement);
+        } catch (error) {
+          // Ignorer les erreurs de duplication (CREATE IF NOT EXISTS)
+          if (!error.message.includes('déjà existe') && !error.message.includes('already exists')) {
+            console.warn('⚠️  Avertissement lors de l\'exécution:', error.message);
+          }
+        }
+      }
     }
-  } finally {
-    if (client) client.release();
-  }
-
-  // Maintenant se connecter à la nouvelle base
-  const dbConfig = {
-    ...config,
-    database: 'bygagoos'
-  };
-  
-  const dbPool = new Pool(dbConfig);
-  const dbClient = await dbPool.connect();
-
-  try {
-    // Créer la table users
-    await dbClient.query(`
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(50) UNIQUE NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
-    console.log('✅ Table "users" créée');
-
-    // Créer les index
-    await dbClient.query(`
-      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-      CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
-    `);
-    console.log('✅ Index créés');
-
-    console.log('🎉 Base de données initialisée avec succès!');
-
+    
+    console.log('✅ Base de données initialisée avec succès !');
+    console.log('📊 Tables créées: users, type_commandes, salaires_horaires, commandes, equipe_production, stock_materiaux, mouvements_stock');
+    console.log('👥 Utilisateurs par défaut créés (mots de passe par défaut définis)');
+    
   } catch (error) {
-    console.error('❌ Erreur:', error.message);
-  } finally {
-    dbClient.release();
-    await dbPool.end();
-    await pool.end();
+    console.error('❌ Erreur lors de l\'initialisation de la base de données:', error);
+    throw error;
   }
 }
 
-initializeDatabase();
+// Exécuter si appelé directement
+if (require.main === module) {
+  initializeDatabase()
+    .then(() => {
+      console.log('🎉 Initialisation terminée!');
+      process.exit(0);
+    })
+    .catch(error => {
+      console.error('💥 Échec de l\'initialisation:', error);
+      process.exit(1);
+    });
+}
+
+module.exports = initializeDatabase;

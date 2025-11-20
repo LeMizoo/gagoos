@@ -1,147 +1,106 @@
-// client/src/App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import Login from './components/auth/Login';
-import Register from './components/auth/Register';
-import Dashboard from './pages/Dashboard';
-import LoadingSpinner from './components/ui/LoadingSpinner';
-import Header from './components/ui/Header';  // NOUVEAU HEADER
-import Footer from './components/ui/Footer';  // NOUVEAU FOOTER
-import './index.css';
+import ProtectedRoute from './components/ProtectedRoute';
+import Navigation from './components/shared/Navigation';
+import './App.css';
 
-// Import de TOUTES les pages
+// Pages publiques
 import Home from './pages/Home';
-import Features from './pages/Features';
-import Pricing from './pages/Pricing';
-import Gallery from './pages/Gallery';
 import Products from './pages/Products';
+import Gallery from './pages/Gallery';
 import About from './pages/About';
 import Contact from './pages/Contact';
-import Profile from './pages/Profile';
+import Login from './components/auth/Login';
+import Register from './components/auth/Register';
 
-// Composant pour protéger les routes
-const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-  
-  return user ? children : <Navigate to="/login" />;
-};
+// Pages protégées
+import Dashboard from './pages/Dashboard';
+import Production from './pages/production/Production';
+import StocksOverview from './pages/stocks/StocksOverview';
+import GestionSalaries from './pages/rh/GestionSalaries';
+import Fiscalite from './pages/comptabilite/Fiscalite';
+import Unauthorized from './pages/Unauthorized';
 
-// Composant pour les routes publiques (redirige si déjà connecté)
-const PublicRoute = ({ children }) => {
-  const { user, loading } = useAuth();
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-  
-  return !user ? children : <Navigate to="/dashboard" />;
-};
+// Composant App principal
+function AppContent() {
+  const { isAuthenticated } = useAuth();
 
-// Layout principal AVEC NOUVEAUX HEADER/FOOTER
-const MainLayout = ({ children }) => {
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header />  {/* NOUVEAU HEADER */}
-      <main className="flex-grow">
-        {children}
-      </main>
-      <Footer />  {/* NOUVEAU FOOTER */}
+    <div className="app-container">
+      {/* Navigation visible partout */}
+      <Navigation />
+
+      {/* Contenu principal avec offset pour la nav fixe */}
+      <div className="content-with-nav">
+        <Routes>
+          {/* ==================== ROUTES PUBLIQUES ==================== */}
+          <Route path="/" element={<Home />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/gallery" element={<Gallery />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/unauthorized" element={<Unauthorized />} />
+
+          {/* ==================== REDIRECTIONS ==================== */}
+          <Route path="/dashboard" element={
+            isAuthenticated ? <Dashboard /> : <Navigate to="/login" replace />
+          } />
+
+          {/* ==================== ROUTES PROTÉGÉES ==================== */}
+          <Route path="/production/*" element={
+            <ProtectedRoute requiredPermission="production">
+              <Production />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/stocks/*" element={
+            <ProtectedRoute requiredPermission="stocks">
+              <StocksOverview />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/rh/*" element={
+            <ProtectedRoute requiredPermission="rh">
+              <GestionSalaries />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/comptabilite/*" element={
+            <ProtectedRoute requiredPermission="comptabilite">
+              <Fiscalite />
+            </ProtectedRoute>
+          } />
+
+          {/* ==================== ROUTE 404 ==================== */}
+          <Route path="*" element={
+            <div className="min-h-screen flex items-center justify-center">
+              <div className="text-center">
+                <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
+                <p className="text-xl text-gray-600">Page non trouvée</p>
+                <button
+                  onClick={() => window.history.back()}
+                  className="mt-6 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700"
+                >
+                  Retour
+                </button>
+              </div>
+            </div>
+          } />
+        </Routes>
+      </div>
     </div>
   );
-};
+}
 
-// Composant de page 404
-const NotFound = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-4">404</h1>
-        <p className="text-xl text-gray-600 mb-8">Page non trouvée</p>
-        <a 
-          href="/" 
-          className="btn btn-primary"
-        >
-          Retour à l'accueil
-        </a>
-      </div>
-    </div>
-  );
-};
-
+// Composant App principal avec providers
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="App">
-          <Routes>
-            {/* Route racine - Page d'accueil publique */}
-            <Route path="/" element={<MainLayout><Home /></MainLayout>} />
-            
-            {/* Routes publiques avec layout */}
-            <Route 
-              path="/login" 
-              element={
-                <PublicRoute>
-                  <MainLayout>
-                    <Login />
-                  </MainLayout>
-                </PublicRoute>
-              } 
-            />
-            <Route 
-              path="/register" 
-              element={
-                <PublicRoute>
-                  <MainLayout>
-                    <Register />
-                  </MainLayout>
-                </PublicRoute>
-              } 
-            />
-            
-            {/* Routes publiques normales */}
-            <Route path="/features" element={<MainLayout><Features /></MainLayout>} />
-            <Route path="/pricing" element={<MainLayout><Pricing /></MainLayout>} />
-            <Route path="/gallery" element={<MainLayout><Gallery /></MainLayout>} />
-            <Route path="/products" element={<MainLayout><Products /></MainLayout>} />
-            <Route path="/about" element={<MainLayout><About /></MainLayout>} />
-            <Route path="/contact" element={<MainLayout><Contact /></MainLayout>} />
-            
-            {/* Routes protégées */}
-            <Route 
-              path="/dashboard" 
-              element={
-                <ProtectedRoute>
-                  <MainLayout><Dashboard /></MainLayout>
-                </ProtectedRoute>
-              } 
-            />
-            <Route 
-              path="/profile" 
-              element={
-                <ProtectedRoute>
-                  <MainLayout><Profile /></MainLayout>
-                </ProtectedRoute>
-              } 
-            />
-            
-            {/* Route 404 */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </div>
+        <AppContent />
       </Router>
     </AuthProvider>
   );

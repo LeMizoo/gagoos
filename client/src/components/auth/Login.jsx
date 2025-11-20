@@ -1,25 +1,35 @@
-import React, { useState } from 'react';
-import { useAuth } from '../../context/AuthContext';
+import React, { useState, useContext } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { AuthContext } from '../../context/AuthContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+
+  const { login } = useContext(AuthContext);
+  const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
+    setError('');
 
     const result = await login(email, password);
-    
-    if (!result.success) {
+
+    if (result.success) {
+      navigate('/dashboard');
+    } else {
       setError(result.error);
     }
-    
+
     setLoading(false);
+  };
+
+  const fillDemoAccount = (email, password) => {
+    setEmail(email);
+    setPassword(password);
   };
 
   return (
@@ -27,24 +37,29 @@ const Login = () => {
       <div className="max-w-md w-full space-y-8">
         <div>
           <img
-            className="mx-auto h-12 w-auto"
             src="/images/logos/gagoos.png"
-            alt="ByGagoos"
+            alt="Gagoos"
+            className="mx-auto h-16 w-auto"
           />
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Connexion à votre compte
+            Connexion à ByGagoos
           </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            Accédez à votre espace de travail
+          </p>
         </div>
+
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="alert alert-error">
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
               {error}
             </div>
           )}
-          <div className="rounded-md shadow-sm -space-y-px">
+
+          <div className="space-y-4">
             <div>
-              <label htmlFor="email-address" className="sr-only">
-                Adresse email
+              <label htmlFor="email-address" className="block text-sm font-medium text-gray-700">
+                Email
               </label>
               <input
                 id="email-address"
@@ -52,14 +67,14 @@ const Login = () => {
                 type="email"
                 autoComplete="email"
                 required
-                className="input rounded-t-md"
-                placeholder="Adresse email"
+                className="mt-1 appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="votre@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
                 Mot de passe
               </label>
               <input
@@ -68,8 +83,8 @@ const Login = () => {
                 type="password"
                 autoComplete="current-password"
                 required
-                className="input rounded-b-md"
-                placeholder="Mot de passe"
+                className="mt-1 appearance-none relative block w-full px-3 py-3 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                placeholder="Votre mot de passe"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
@@ -80,16 +95,57 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="btn btn-primary w-full"
+              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 transition duration-200"
             >
               {loading ? 'Connexion...' : 'Se connecter'}
             </button>
           </div>
 
           <div className="text-center">
-            <a href="/register" className="text-blue-600 hover:text-blue-500">
+            <Link to="/register" className="text-indigo-600 hover:text-indigo-500 text-sm">
               Créer un compte
-            </a>
+            </Link>
+          </div>
+
+          {/* Comptes de démonstration */}
+          <div className="mt-8 border-t pt-6">
+            <h3 className="text-sm font-medium text-gray-700 mb-3 text-center">
+              Comptes de démonstration :
+            </h3>
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => fillDemoAccount('gerante@bygagoos.com', 'demo123')}
+                className="w-full text-left p-3 text-sm bg-blue-50 border border-blue-200 rounded-md hover:bg-blue-100 transition duration-200"
+              >
+                <strong>Gérante</strong><br />
+                gerante@bygagoos.com / demo123
+              </button>
+              <button
+                type="button"
+                onClick={() => fillDemoAccount('contremaitre@bygagoos.com', 'demo123')}
+                className="w-full text-left p-3 text-sm bg-green-50 border border-green-200 rounded-md hover:bg-green-100 transition duration-200"
+              >
+                <strong>Contremaître</strong><br />
+                contraemaitre@bygagoos.com / demo123
+              </button>
+              <button
+                type="button"
+                onClick={() => fillDemoAccount('salarie@bygagoos.com', 'demo123')}
+                className="w-full text-left p-3 text-sm bg-purple-50 border border-purple-200 rounded-md hover:bg-purple-100 transition duration-200"
+              >
+                <strong>Salarié</strong><br />
+                salarie@bygagoos.com / demo123
+              </button>
+              <button
+                type="button"
+                onClick={() => fillDemoAccount('admin@gagoos.com', 'password')}
+                className="w-full text-left p-3 text-sm bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100 transition duration-200"
+              >
+                <strong>Administrateur</strong><br />
+                admin@gagoos.com / password
+              </button>
+            </div>
           </div>
         </form>
       </div>

@@ -50,7 +50,7 @@ const ActivityStats = () => {
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Aperçu de l'Activité</h2>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {stats.map((stat, index) => {
           const Icon = stat.icon;
@@ -60,9 +60,8 @@ const ActivityStats = () => {
                 <div className={`p-2 rounded-lg ${getColorClasses(stat.color, stat.trend)}`}>
                   <Icon className="h-6 w-6" />
                 </div>
-                <span className={`text-sm font-medium ${
-                  stat.trend === 'up' ? 'text-green-600' : 'text-red-600'
-                }`}>
+                <span className={`text-sm font-medium ${stat.trend === 'up' ? 'text-green-600' : 'text-red-600'
+                  }`}>
                   {stat.change}
                 </span>
               </div>
