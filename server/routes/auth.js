@@ -18,12 +18,23 @@ const authLimiter = rateLimit({
   }
 });
 
+// Appliquer le rate limiting à toutes les routes d'auth
+router.use(authLimiter);
+
 // Route d'inscription améliorée
-router.post('/register', authLimiter, validateRegistration, async (req, res) => {
+router.post('/register', validateRegistration, async (req, res) => {
   try {
     console.log('📝 Tentative d\'inscription:', req.body.email);
 
     const { prenom, nom, email, password, role, departement } = req.body;
+
+    // Validation des champs requis
+    if (!prenom || !nom || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Tous les champs obligatoires doivent être remplis'
+      });
+    }
 
     // Vérifier que la clé JWT existe
     if (!process.env.JWT_SECRET) {
@@ -50,12 +61,16 @@ router.post('/register', authLimiter, validateRegistration, async (req, res) => 
     const hashedPassword = await bcrypt.hash(password, 12);
     console.log('🔑 Mot de passe hashé');
 
+    // Déterminer le rôle par défaut
+    const userRole = role || 'salarie';
+    const userDepartement = departement || 'Production';
+
     // Insérer le nouvel utilisateur
     const result = await pool.query(
       `INSERT INTO users (prenom, nom, email, password, role, departement) 
        VALUES ($1, $2, $3, $4, $5, $6) 
        RETURNING id, prenom, nom, email, role, departement, created_at`,
-      [prenom, nom, normalizedEmail, hashedPassword, role || 'salarie', departement || 'Production']
+      [prenom, nom, normalizedEmail, hashedPassword, userRole, userDepartement]
     );
 
     const user = result.rows[0];
@@ -74,7 +89,8 @@ router.post('/register', authLimiter, validateRegistration, async (req, res) => 
         nom: user.nom,
         email: user.email,
         role: user.role,
-        departement: user.departement
+        departement: user.departement,
+        created_at: user.created_at
       }
     });
   } catch (error) {
@@ -87,23 +103,20 @@ router.post('/register', authLimiter, validateRegistration, async (req, res) => 
   }
 });
 
-// Pour la compatibilité, on peut aussi renvoyer le token en cookie HttpOnly
-const setAuthCookie = (res, token) => {
-  const cookieOptions = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 24 * 60 * 60 * 1000 // 24h
-  };
-  res.cookie('token', token, cookieOptions);
-};
-
 // Route de connexion améliorée
-router.post('/login', authLimiter, validateLoginInput, async (req, res) => {
+router.post('/login', validateLoginInput, async (req, res) => {
   console.log('🔐 TENTATIVE DE CONNEXION - Données reçues:', req.body);
 
   try {
     const { email, password } = req.body;
+
+    // Validation basique
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email et mot de passe sont requis'
+      });
+    }
 
     if (!process.env.JWT_SECRET) {
       console.error('❌ JWT_SECRET non défini');
@@ -117,7 +130,10 @@ router.post('/login', authLimiter, validateLoginInput, async (req, res) => {
     console.log('📧 Recherche utilisateur:', normalizedEmail);
 
     // Trouver l'utilisateur
-    const result = await pool.query('SELECT * FROM users WHERE email = $1 AND is_active = true', [normalizedEmail]);
+    const result = await pool.query(
+      'SELECT * FROM users WHERE email = $1 AND is_active = true',
+      [normalizedEmail]
+    );
     console.log('👤 Résultat recherche:', result.rows.length, 'utilisateur(s) trouvé(s)');
 
     if (result.rows.length === 0) {
@@ -144,18 +160,13 @@ router.post('/login', authLimiter, validateLoginInput, async (req, res) => {
     }
 
     // Mettre à jour la dernière connexion
-    await pool.query('UPDATE users SET last_login = NOW() WHERE id = $1', [user.id]);
+    await pool.query(
+      'UPDATE users SET last_login = NOW() WHERE id = $1',
+      [user.id]
+    );
 
     // Générer le token JWT
     const token = generateToken(user.id);
-
-    // Définir cookie HttpOnly pour les clients compatibles
-    try {
-      setAuthCookie(res, token);
-      console.log('🍪 Cookie auth défini');
-    } catch (e) {
-      console.log('⚠️  Cookie non défini:', e.message);
-    }
 
     console.log('🎉 Connexion réussie pour:', user.email);
 
@@ -170,7 +181,8 @@ router.post('/login', authLimiter, validateLoginInput, async (req, res) => {
         email: user.email,
         role: user.role,
         departement: user.departement,
-        phone: user.phone
+        phone: user.phone,
+        last_login: user.last_login
       }
     });
   } catch (error) {
@@ -206,7 +218,7 @@ router.get('/profile', auth, async (req, res) => {
     console.log('👤 Récupération profil pour:', req.user.id);
 
     const result = await pool.query(
-      'SELECT id, prenom, nom, email, role, departement, phone, created_at FROM users WHERE id = $1',
+      'SELECT id, prenom, nom, email, role, departement, phone, created_at, last_login FROM users WHERE id = $1',
       [req.user.id]
     );
 
@@ -241,6 +253,14 @@ router.put('/profile', auth, async (req, res) => {
     const { prenom, nom, phone } = req.body;
     const userId = req.user.id;
 
+    // Validation
+    if (!prenom || !nom) {
+      return res.status(400).json({
+        success: false,
+        message: 'Le prénom et le nom sont obligatoires'
+      });
+    }
+
     const result = await pool.query(
       `UPDATE users SET prenom = $1, nom = $2, phone = $3, updated_at = CURRENT_TIMESTAMP 
        WHERE id = $4 
@@ -269,12 +289,18 @@ router.put('/profile', auth, async (req, res) => {
 router.post('/logout', auth, (req, res) => {
   console.log('🚪 Déconnexion pour:', req.user.email);
 
-  // Effacer le cookie
-  res.clearCookie('token');
-
   res.json({
     success: true,
     message: 'Déconnexion réussie'
+  });
+});
+
+// Route de santé de l'API
+router.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'API Auth opérationnelle',
+    timestamp: new Date().toISOString()
   });
 });
 

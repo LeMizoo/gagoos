@@ -37,8 +37,8 @@ app.get('/', (req, res) => {
 
 // Route de santé
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'OK', 
+  res.json({
+    status: 'OK',
     message: 'ByGagoos Server is running!',
     timestamp: new Date().toISOString()
   });
@@ -49,7 +49,7 @@ app.get('/api/test-db', async (req, res) => {
   try {
     const db = require('./config/database');
     const result = await db.query('SELECT NOW() as time, version() as version');
-    
+
     res.json({
       database: 'Connected ✅',
       time: result.rows[0].time,
@@ -66,13 +66,13 @@ app.use('/api/auth', authRoutes);
 
 // Gestion des routes non trouvées
 app.use((req, res, next) => {
-  res.status(404).json({ 
+  res.status(404).json({
     error: 'Route not found',
     requestedUrl: req.originalUrl,
     method: req.method,
     availableRoutes: [
       'GET /',
-      'GET /api/health', 
+      'GET /api/health',
       'GET /api/test-db',
       'POST /api/auth/register',
       'POST /api/auth/login',
@@ -85,7 +85,7 @@ app.use((req, res, next) => {
 // Gestion des erreurs
 app.use((err, req, res, next) => {
   console.error('❌ Error:', err.stack);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Something went wrong!',
     message: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
   });
@@ -100,7 +100,7 @@ app.listen(PORT, () => {
   console.log(`🌐 Environment: ${process.env.NODE_ENV}`);
   console.log(`🗄️  Database: ${process.env.DB_NAME}`);
   console.log('✨ ======================================\n');
-  
+
   console.log('📋 Available routes:');
   console.log(`   🌐 http://localhost:${PORT}/`);
   console.log(`   ❤️  http://localhost:${PORT}/api/health`);

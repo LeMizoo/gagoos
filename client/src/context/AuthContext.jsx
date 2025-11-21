@@ -1,5 +1,17 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 
+// Configuration des URLs API
+const getApiBaseUrl = () => {
+  // En développement, utiliser l'URL complète du backend
+  if (import.meta.env.DEV) {
+    return 'https://bygagoos-backend.onrender.com';
+  }
+  // En production, utiliser les chemins relatifs (gérés par Vercel rewrites)
+  return '';
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
 // Permissions par rôle
 const rolePermissions = {
   'gerante': ['dashboard', 'production', 'stocks', 'rh', 'comptabilite', 'analytics'],
@@ -31,10 +43,40 @@ export const AuthProvider = ({ children }) => {
     setPermissions([]);
   };
 
+  // Fonction utilitaire pour les requêtes API
+  const apiRequest = async (endpoint, options = {}) => {
+    const url = `${API_BASE_URL}${endpoint}`;
+
+    console.log('🌐 API Request:', url);
+
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers,
+      },
+      ...options,
+    };
+
+    if (config.body && typeof config.body === 'object') {
+      config.body = JSON.stringify(config.body);
+    }
+
+    const response = await fetch(url, config);
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({
+        message: `HTTP error! status: ${response.status}`
+      }));
+      throw new Error(errorData.message || errorData.error || 'Erreur API');
+    }
+
+    return response.json();
+  };
+
   // Vérification du token
   const verifyToken = async (token) => {
     try {
-      const response = await fetch('/api/auth/verify', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -83,20 +125,10 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
 
-      const response = await fetch('/api/auth/login', {
+      const data = await apiRequest('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password })
+        body: { email, password }
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erreur de connexion');
-      }
-
-      const data = await response.json();
 
       if (!data.success) {
         throw new Error(data.error || 'Erreur de connexion');
@@ -126,20 +158,10 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
 
-      const response = await fetch('/api/auth/register', {
+      const data = await apiRequest('/api/auth/register', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData)
+        body: userData
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Erreur lors de l\'inscription');
-      }
-
-      const data = await response.json();
 
       if (!data.success) {
         throw new Error(data.error || 'Erreur lors de l\'inscription');
@@ -169,7 +191,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const token = localStorage.getItem('bygagoos_token');
       if (token) {
-        await fetch('/api/auth/logout', {
+        await apiRequest('/api/auth/logout', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`

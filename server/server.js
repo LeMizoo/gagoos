@@ -109,6 +109,68 @@ const demoUsers = {
   }
 };
 
+// ✅ AJOUT: ROUTE D'INSCRIPTION
+app.post('/api/auth/register', (req, res) => {
+  console.log('📝 REGISTER ATTEMPT:', req.body);
+
+  try {
+    const { prenom, nom, email, password, role } = req.body;
+
+    // Validation des champs requis
+    if (!prenom || !nom || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Tous les champs obligatoires doivent être remplis'
+      });
+    }
+
+    // Vérifier si l'utilisateur existe déjà
+    if (demoUsers[email]) {
+      console.log('❌ User already exists:', email);
+      return res.status(400).json({
+        success: false,
+        error: 'Un utilisateur avec cet email existe déjà'
+      });
+    }
+
+    // Créer un nouvel ID
+    const newId = Object.keys(demoUsers).length + 1;
+
+    // Ajouter le nouvel utilisateur (en mémoire seulement)
+    demoUsers[email] = {
+      id: newId,
+      email: email,
+      nom: nom,
+      prenom: prenom,
+      role: role || 'salarie',
+      password: password
+    };
+
+    console.log('✅ New user registered:', email);
+
+    // Réponse de succès
+    res.status(201).json({
+      success: true,
+      token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI' + newId + 'IiwiZW1haWwiOiI' + email + 'iLCJyb2xlIjoi' + (role || 'salarie') + 'IiwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjE3MzE1MzYwMDB9.demo-register-token',
+      user: {
+        id: newId,
+        email: email,
+        nom: nom,
+        prenom: prenom,
+        role: role || 'salarie'
+      },
+      message: 'Compte créé avec succès'
+    });
+
+  } catch (error) {
+    console.error('💥 Register error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la création du compte'
+    });
+  }
+});
+
 // LOGIN - Version ultra simple
 app.post('/api/auth/login', (req, res) => {
   console.log('🔐 LOGIN ATTEMPT:', req.body);
@@ -309,7 +371,10 @@ app.use('/api/*', (req, res) => {
     available_endpoints: [
       'GET /api/health',
       'GET /api/test',
+      'POST /api/auth/register', // ✅ AJOUTÉ
       'POST /api/auth/login',
+      'GET /api/auth/verify',
+      'POST /api/auth/logout',
       'GET /api/stock/dashboard',
       'GET /api/production/orders',
       'GET /api/rh/employees',
@@ -342,6 +407,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('📋 Endpoints disponibles:');
   console.log(`   ✅ Health: http://localhost:${PORT}/api/health`);
   console.log(`   🧪 Test: http://localhost:${PORT}/api/test`);
+  console.log(`   📝 Register: http://localhost:${PORT}/api/auth/register`); // ✅ AJOUTÉ
   console.log(`   🔐 Login: http://localhost:${PORT}/api/auth/login`);
   console.log('='.repeat(70));
   console.log('👤 Comptes de test:');
