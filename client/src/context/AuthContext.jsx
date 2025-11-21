@@ -2,11 +2,9 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 
 // Configuration des URLs API
 const getApiBaseUrl = () => {
-  // En développement, utiliser l'URL complète du backend
   if (import.meta.env.DEV) {
     return 'https://bygagoos-backend.onrender.com';
   }
-  // En production, utiliser les chemins relatifs (gérés par Vercel rewrites)
   return '';
 };
 
@@ -14,10 +12,10 @@ const API_BASE_URL = getApiBaseUrl();
 
 // Permissions par rôle
 const rolePermissions = {
-  'gerante': ['dashboard', 'production', 'stocks', 'rh', 'comptabilite', 'analytics'],
-  'contremaitre': ['dashboard', 'production', 'stocks', 'equipe'],
-  'salarie': ['dashboard', 'mes-tâches', 'progression'],
-  'admin': ['dashboard', 'admin', 'utilisateurs', 'system']
+  gerante: ['dashboard', 'production', 'stocks', 'rh', 'comptabilite', 'analytics'],
+  contremaitre: ['dashboard', 'production', 'stocks', 'equipe'],
+  salarie: ['dashboard', 'mes-tâches', 'progression'],
+  admin: ['dashboard', 'admin', 'utilisateurs', 'system'],
 };
 
 const AuthContext = createContext();
@@ -46,8 +44,7 @@ export const AuthProvider = ({ children }) => {
   // Fonction utilitaire pour les requêtes API
   const apiRequest = async (endpoint, options = {}) => {
     const url = `${API_BASE_URL}${endpoint}`;
-
-    console.log('🌐 API Request:', url);
+    console.log('🌐 API Request:', url, options.body);
 
     const config = {
       headers: {
@@ -65,7 +62,7 @@ export const AuthProvider = ({ children }) => {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({
-        message: `HTTP error! status: ${response.status}`
+        message: `HTTP error! status: ${response.status}`,
       }));
       throw new Error(errorData.message || errorData.error || 'Erreur API');
     }
@@ -78,8 +75,8 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (!response.ok) {
@@ -127,14 +124,13 @@ export const AuthProvider = ({ children }) => {
 
       const data = await apiRequest('/api/auth/login', {
         method: 'POST',
-        body: { email, password }
+        body: { email, password },
       });
 
       if (!data.success) {
         throw new Error(data.error || 'Erreur de connexion');
       }
 
-      // Stocker les données
       localStorage.setItem('bygagoos_token', data.token);
       localStorage.setItem('bygagoos_user', JSON.stringify(data.user));
 
@@ -146,28 +142,44 @@ export const AuthProvider = ({ children }) => {
       console.error('Login error:', error);
       return {
         success: false,
-        error: error.message || 'Erreur lors de la connexion'
+        error: error.message || 'Erreur lors de la connexion',
       };
     } finally {
       setLoading(false);
     }
   };
 
-  // Fonction d'inscription
+  // Fonction d'inscription CORRIGÉE
   const register = async (userData) => {
     try {
       setLoading(true);
 
+      console.log('📝 Données envoyées à l\'API:', userData);
+
+      // ✅ CORRECTION: Envoyer les champs requis par le backend
+      const registrationData = {
+        prenom: userData.prenom || userData.username || '', // Utiliser prenom ou username
+        nom: userData.nom || userData.username || '',       // Utiliser nom ou username
+        email: userData.email,
+        password: userData.password,
+        role: userData.role || 'salarie',
+        departement: userData.departement || 'Production'
+      };
+
+      // Validation des champs obligatoires
+      if (!registrationData.prenom || !registrationData.nom || !registrationData.email || !registrationData.password) {
+        throw new Error('Tous les champs obligatoires doivent être remplis');
+      }
+
       const data = await apiRequest('/api/auth/register', {
         method: 'POST',
-        body: userData
+        body: registrationData,
       });
 
       if (!data.success) {
-        throw new Error(data.error || 'Erreur lors de l\'inscription');
+        throw new Error(data.error || "Erreur lors de l'inscription");
       }
 
-      // Stocker les données
       localStorage.setItem('bygagoos_token', data.token);
       localStorage.setItem('bygagoos_user', JSON.stringify(data.user));
 
@@ -179,7 +191,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Register error:', error);
       return {
         success: false,
-        error: error.message || 'Erreur lors de l\'inscription'
+        error: error.message || "Erreur lors de l'inscription",
       };
     } finally {
       setLoading(false);
@@ -194,8 +206,8 @@ export const AuthProvider = ({ children }) => {
         await apiRequest('/api/auth/logout', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         });
       }
     } catch (error) {
@@ -218,14 +230,10 @@ export const AuthProvider = ({ children }) => {
     loading,
     hasPermission,
     permissions,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export { AuthContext };
