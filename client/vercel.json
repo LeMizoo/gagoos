@@ -2,37 +2,22 @@
     "version": 2,
     "buildCommand": "npm run build",
     "outputDirectory": "dist",
-    "devCommand": "npm run dev",
-    "installCommand": "npm install",
     "framework": "vite",
     "headers": [
         {
             "source": "/assets/(.*)",
             "headers": [
                 {
-                    "key": "Cache-Control",
-                    "value": "public, max-age=31536000, immutable"
-                },
-                {
                     "key": "Content-Type",
                     "value": "application/javascript"
-                }
-            ]
-        },
-        {
-            "source": "/(.*).css",
-            "headers": [
-                {
-                    "key": "Content-Type",
-                    "value": "text/css"
                 }
             ]
         }
     ],
     "rewrites": [
         {
-            "source": "/api/(.*)",
-            "destination": "https://bygagoos-backend.onrender.com/api/$1"
+            "source": "/api/:path*",
+            "destination": "https://bygagoos-backend.onrender.com/api/:path*"
         },
         {
             "source": "/(.*)",
