@@ -39,39 +39,76 @@ if (!envLoaded) {
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-/**
- * Configuration CORS étendue pour le développement
- */
+// ==================== CONFIGURATION CORS POUR PRODUCTION ====================
+// Liste complète des origines autorisées
+const allowedOrigins = [
+  'https://gagoos.vercel.app',
+  'https://www.gagoos.vercel.app',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'https://bygagoos-backend.onrender.com' // Votre propre backend
+];
+
+// Configuration CORS avancée
 const corsOptions = {
   origin: function (origin, callback) {
-    const allowedOrigins = [
-      'http://localhost:5173',
-      'http://localhost:5174',
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'https://bygagoos.vercel.app'
-    ];
+    console.log(`🌐 CORS Request - Origin: ${origin}, Environment: ${env}`);
 
     // En développement, accepter toutes les origines pour faciliter le debug
     if (env === 'development') {
-      console.log(`🌐 CORS Development - Origin: ${origin}`);
+      console.log(`🔓 Mode développement - Autorisation de: ${origin}`);
       return callback(null, true);
     }
 
-    // En production, vérifier les origines autorisées
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+    // En production :
+    // 1. Autoriser les requêtes sans origine (comme curl, postman)
+    if (!origin) {
+      console.log('🔓 Requête sans origine autorisée (curl, postman, etc.)');
+      return callback(null, true);
+    }
+
+    // 2. Vérifier si l'origine est dans la liste autorisée
+    if (allowedOrigins.includes(origin)) {
+      console.log(`✅ Origine autorisée: ${origin}`);
       callback(null, true);
     } else {
-      console.warn(`⚠️  Origin non autorisé: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+      // 3. Vérifier les sous-domaines de Vercel
+      if (origin.endsWith('.vercel.app')) {
+        console.log(`✅ Sous-domaine Vercel autorisé: ${origin}`);
+        return callback(null, true);
+      }
+
+      console.warn(`🚫 Origine NON autorisée: ${origin}`);
+      console.warn(`📋 Origines autorisées: ${allowedOrigins.join(', ')}`);
+      callback(new Error(`Not allowed by CORS. Origin: ${origin}`), false);
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Access-Control-Allow-Headers',
+    'Access-Control-Allow-Origin'
+  ],
+  exposedHeaders: [
+    'Content-Range',
+    'X-Content-Range',
+    'Access-Control-Allow-Origin',
+    'Access-Control-Allow-Credentials'
+  ],
+  maxAge: 86400 // 24 heures de cache pour les pré-vols
 };
 
+// Appliquer CORS
 app.use(cors(corsOptions));
+
+// Gérer spécifiquement les requêtes OPTIONS (pré-vol)
+app.options('*', cors(corsOptions));
 
 /**
  * Configuration de sécurité Helmet
@@ -115,6 +152,15 @@ app.disable('x-powered-by');
 app.use((req, res, next) => {
   console.log(`🌐 ${req.method} ${req.originalUrl}`);
 
+  // Log des headers CORS pour débogage
+  if (env === 'development' || env === 'production') {
+    console.log('📋 Headers CORS:', {
+      origin: req.headers.origin,
+      'access-control-request-method': req.headers['access-control-request-method'],
+      'access-control-request-headers': req.headers['access-control-request-headers']
+    });
+  }
+
   // Log du body pour POST/PUT mais masquer les mots de passe
   if (['POST', 'PUT'].includes(req.method) && req.body) {
     const logBody = { ...req.body };
@@ -124,6 +170,10 @@ app.use((req, res, next) => {
     if (logBody.confirmPassword) logBody.confirmPassword = '***';
     console.log('📦 Body:', logBody);
   }
+
+  // Ajouter les headers CORS à chaque réponse
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Vary', 'Origin');
 
   next();
 });
@@ -139,6 +189,10 @@ app.get('/', (req, res) => {
     status: 'operational',
     environment: env,
     timestamp: new Date().toISOString(),
+    cors: {
+      allowedOrigins: allowedOrigins,
+      currentOrigin: req.headers.origin || 'none'
+    },
     endpoints: {
       health: '/api/health',
       testDb: '/api/test-db',
@@ -152,6 +206,21 @@ app.get('/', (req, res) => {
   });
 });
 
+// Route de test CORS spécifique
+app.get('/api/cors-test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'CORS test successful!',
+    cors: {
+      allowedOrigins: allowedOrigins,
+      currentOrigin: req.headers.origin || 'none',
+      environment: env,
+      headers: req.headers
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get('/health', async (req, res) => {
   res.json({
     success: true,
@@ -161,7 +230,11 @@ app.get('/health', async (req, res) => {
       api: 'healthy'
     },
     version: '2.1.0',
-    environment: env
+    environment: env,
+    cors: {
+      origin: req.headers.origin || 'none',
+      allowed: allowedOrigins.includes(req.headers.origin || '') ? 'yes' : 'no'
+    }
   });
 });
 
@@ -171,7 +244,11 @@ app.get('/api/health', async (req, res) => {
     status: 'healthy',
     message: 'API is running!',
     timestamp: new Date().toISOString(),
-    environment: env
+    environment: env,
+    cors: {
+      origin: req.headers.origin,
+      method: req.method
+    }
   });
 });
 
@@ -206,6 +283,10 @@ app.post('/api/auth/register-test', async (req, res) => {
       ...req.body,
       password: req.body.password ? '***' : undefined
     },
+    cors: {
+      origin: req.headers.origin,
+      allowed: allowedOrigins.includes(req.headers.origin || '') ? 'yes' : 'no'
+    },
     timestamp: new Date().toISOString()
   });
 });
@@ -228,6 +309,10 @@ app.post('/api/auth/login-test', async (req, res) => {
         email: 'admin@gagoos.com',
         role: 'admin',
         departement: 'Administration'
+      },
+      cors: {
+        origin: req.headers.origin,
+        status: 'allowed'
       }
     });
   }
@@ -294,8 +379,39 @@ app.get('/api/docs', (req, res) => {
         stats: 'GET /api/dashboard/stats',
         activities: 'GET /api/dashboard/activities'
       }
+    },
+    cors: {
+      allowedOrigins: allowedOrigins,
+      documentation: 'https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS'
     }
   });
+});
+
+/**
+ * Middleware spécial pour les erreurs CORS
+ */
+app.use((err, req, res, next) => {
+  if (err.message && err.message.includes('Not allowed by CORS')) {
+    console.error('❌ Erreur CORS:', {
+      origin: req.headers.origin,
+      method: req.method,
+      url: req.originalUrl,
+      allowedOrigins: allowedOrigins
+    });
+
+    return res.status(403).json({
+      success: false,
+      error: 'CORS_POLICY_VIOLATION',
+      message: 'Accès interdit par la politique CORS',
+      details: {
+        requestedOrigin: req.headers.origin,
+        allowedOrigins: allowedOrigins,
+        environment: env
+      },
+      suggestion: `Ajoutez "${req.headers.origin}" à la liste des origines autorisées dans server.js`
+    });
+  }
+  next(err);
 });
 
 /**
@@ -318,7 +434,8 @@ app.use((err, req, res, next) => {
     message: err.message,
     stack: env === 'development' ? err.stack : undefined,
     path: req.path,
-    method: req.method
+    method: req.method,
+    origin: req.headers.origin
   });
 
   const statusCode = err.status || err.statusCode || 500;
@@ -354,23 +471,30 @@ const startServer = async () => {
 
     // Démarrer le serveur
     const server = app.listen(PORT, () => {
-      console.log('\n' + '='.repeat(50));
+      console.log('\n' + '='.repeat(60));
       console.log('🚀 SERVEUR BYGAGOOS DÉMARRÉ AVEC SUCCÈS');
-      console.log('='.repeat(50));
+      console.log('='.repeat(60));
       console.log(`📍 Port: ${PORT}`);
       console.log(`🌍 Environnement: ${env}`);
       console.log(`⏰ Date: ${new Date().toLocaleString()}`);
       console.log(`🔗 URL: http://localhost:${PORT}`);
-      console.log('='.repeat(50));
+      console.log(`🔗 Render URL: https://bygagoos-backend.onrender.com`);
+      console.log('='.repeat(60));
+      console.log('📋 ORIGINES CORS AUTORISÉES:');
+      allowedOrigins.forEach(origin => {
+        console.log(`   ✅ ${origin}`);
+      });
+      console.log('='.repeat(60));
       console.log('📋 ENDPOINTS DISPONIBLES:');
       console.log(`   🏠  GET  http://localhost:${PORT}/`);
+      console.log(`   🌐 GET  http://localhost:${PORT}/api/cors-test`);
       console.log(`   ❤️  GET  http://localhost:${PORT}/health`);
       console.log(`   🗄️  GET  http://localhost:${PORT}/api/test-db`);
       console.log(`   📝 POST  http://localhost:${PORT}/api/auth/register`);
       console.log(`   🔑 POST  http://localhost:${PORT}/api/auth/login`);
       console.log(`   🧪 POST  http://localhost:${PORT}/api/auth/register-test (test)`);
       console.log(`   🧪 POST  http://localhost:${PORT}/api/auth/login-test (test)`);
-      console.log('='.repeat(50) + '\n');
+      console.log('='.repeat(60) + '\n');
     });
 
     // Gestion propre de l'arrêt
