@@ -1,52 +1,29 @@
 const { Pool } = require('pg');
+require('dotenv').config({ path: '.env.development' });
 
-// Charger le .env manuellement si nécessaire
-require('dotenv').config({ path: '.env.production' });
-
-console.log('🔍 Test de connexion à la base de données...');
-
-// Afficher partiellement l'URL pour vérification (sans le mot de passe)
-const dbUrl = process.env.DATABASE_URL;
-if (dbUrl) {
-    const maskedUrl = dbUrl.replace(/:(.*)@/, ':****@');
-    console.log('📋 DATABASE_URL:', maskedUrl);
-} else {
-    console.log('❌ DATABASE_URL: Non trouvé');
-    process.exit(1);
-}
+console.log('Testing DB connection...');
+console.log('DB URL:', process.env.DATABASE_URL ? '✓ Set' : '✗ Missing');
 
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false } // Nécessaire pour Neon
+    ssl: { rejectUnauthorized: false }
 });
 
-async function testConnection() {
-    let client;
+async function test() {
     try {
-        client = await pool.connect();
-        console.log('✅ Connexion à la base de données réussie!');
+        const client = await pool.connect();
+        console.log('✅ Database connected successfully!');
 
-        // Test des tables existantes
-        const tables = await client.query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public'
-      ORDER BY table_name;
-    `);
-
-        console.log('📊 Tables existantes:');
-        tables.rows.forEach(row => console.log('   - ' + row.table_name));
+        const result = await client.query('SELECT NOW()');
+        console.log('📅 Database time:', result.rows[0].now);
 
         client.release();
-        await pool.end();
-        console.log('🎉 Test terminé avec succès!');
-
+        process.exit(0);
     } catch (error) {
-        console.error('❌ Erreur de connexion:', error.message);
-        if (client) client.release();
-        await pool.end();
+        console.error('❌ Database connection failed:', error.message);
+        console.error('Full error:', error);
         process.exit(1);
     }
 }
 
-testConnection();
+test();

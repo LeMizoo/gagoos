@@ -1,24 +1,50 @@
+// client/vite.config.js
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath, URL } from 'url';
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  build: {
-    outDir: 'dist'
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url))
+    }
   },
-  base: './',
   server: {
+    port: 5173,
+    host: true,
+    strictPort: true,
     proxy: {
       '/api': {
-        target: 'https://bygagoos-backend.onrender.com',
+        target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path
+        rewrite: (path) => path,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('⚠️  Proxy error:', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('🌐 Proxy Request:', req.method, req.url);
+          });
+        }
       }
     }
   },
-  define: {
-    'process.env': {}
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          ui: ['lucide-react']
+        }
+      }
+    }
+  },
+  preview: {
+    port: 5173,
+    host: true
   }
 });

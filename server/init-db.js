@@ -1,52 +1,56 @@
+// server/init-db.js
 const { pool } = require('./config/database');
-const fs = require('fs');
-const path = require('path');
 
 async function initializeDatabase() {
   try {
     console.log('🗄️  Initialisation de la base de données...');
-    
-    // Lire et exécuter le schéma SQL
-    const schemaPath = path.join(__dirname, 'database.sql');
-    const schemaSQL = fs.readFileSync(schemaPath, 'utf8');
-    
-    // Séparer les instructions SQL
-    const statements = schemaSQL.split(';').filter(stmt => stmt.trim());
-    
-    for (const statement of statements) {
-      if (statement.trim()) {
-        try {
-          await pool.query(statement);
-        } catch (error) {
-          // Ignorer les erreurs de duplication (CREATE IF NOT EXISTS)
-          if (!error.message.includes('déjà existe') && !error.message.includes('already exists')) {
-            console.warn('⚠️  Avertissement lors de l\'exécution:', error.message);
-          }
-        }
-      }
+
+    // Créer la table utilisateurs si elle n'existe pas
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS utilisateurs (
+        id SERIAL PRIMARY KEY,
+        prenom VARCHAR(50) NOT NULL,
+        nom VARCHAR(50) NOT NULL,
+        email VARCHAR(100) UNIQUE NOT NULL,
+        password VARCHAR(100) NOT NULL,
+        role VARCHAR(20) NOT NULL DEFAULT 'salarie',
+        departement VARCHAR(50) DEFAULT 'Production',
+        phone VARCHAR(20),
+        is_active BOOLEAN DEFAULT true,
+        last_login TIMESTAMP,
+        reset_token VARCHAR(100),
+        reset_token_expiry TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    console.log('✅ Table utilisateurs créée/verifiée');
+
+    // Créer un utilisateur admin par défaut si aucun n'existe
+    const adminCheck = await pool.query(
+      "SELECT id FROM utilisateurs WHERE email = 'admin@gagoos.com'"
+    );
+
+    if (adminCheck.rows.length === 0) {
+      const bcrypt = require('bcrypt');
+      const hashedPassword = await bcrypt.hash('password', 10);
+
+      await pool.query(`
+        INSERT INTO utilisateurs (
+          prenom, nom, email, password, role, departement, is_active
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (email) DO NOTHING
+      `, ['Admin', 'Gagoos', 'admin@gagoos.com', hashedPassword, 'admin', 'Administration', true]);
+
+      console.log('✅ Utilisateur admin créé: admin@gagoos.com / password');
     }
-    
-    console.log('✅ Base de données initialisée avec succès !');
-    console.log('📊 Tables créées: users, type_commandes, salaires_horaires, commandes, equipe_production, stock_materiaux, mouvements_stock');
-    console.log('👥 Utilisateurs par défaut créés (mots de passe par défaut définis)');
-    
+
+    console.log('🎉 Base de données initialisée avec succès');
+    process.exit(0);
   } catch (error) {
-    console.error('❌ Erreur lors de l\'initialisation de la base de données:', error);
-    throw error;
+    console.error('❌ Erreur initialisation base de données:', error);
+    process.exit(1);
   }
 }
 
-// Exécuter si appelé directement
-if (require.main === module) {
-  initializeDatabase()
-    .then(() => {
-      console.log('🎉 Initialisation terminée!');
-      process.exit(0);
-    })
-    .catch(error => {
-      console.error('💥 Échec de l\'initialisation:', error);
-      process.exit(1);
-    });
-}
-
-module.exports = initializeDatabase;
+initializeDatabase();

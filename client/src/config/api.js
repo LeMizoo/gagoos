@@ -1,34 +1,33 @@
 // Configuration des endpoints API
 const getApiBaseUrl = () => {
-    // En production, utiliser l'URL complète du backend
-    if (import.meta.env.PROD) {
-        return 'https://bygagoos-backend.onrender.com';
+    // En développement, utiliser le backend local
+    if (import.meta.env.DEV) {
+        return 'http://localhost:3001';
     }
-    // En développement, utiliser le proxy Vite (vide = même origine)
-    return '';
+    // En production, utiliser l'URL Render
+    return 'https://bygagoos-backend.onrender.com';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
+
+console.log('🔧 Config API - Base URL:', API_BASE_URL);
 
 export const API_ENDPOINTS = {
     AUTH: {
         LOGIN: `${API_BASE_URL}/api/auth/login`,
         REGISTER: `${API_BASE_URL}/api/auth/register`,
         LOGOUT: `${API_BASE_URL}/api/auth/logout`,
-        PROFILE: `${API_BASE_URL}/api/auth/profile`
+        PROFILE: `${API_BASE_URL}/api/auth/profile`,
+        VERIFY: `${API_BASE_URL}/api/auth/verify`
     },
     USERS: {
         GET_ALL: `${API_BASE_URL}/api/users`,
-        GET_BY_ID: `${API_BASE_URL}/api/users`,
-        UPDATE: `${API_BASE_URL}/api/users`,
-        DELETE: `${API_BASE_URL}/api/users`
+        GET_BY_ID: (id) => `${API_BASE_URL}/api/users/${id}`,
+        UPDATE: (id) => `${API_BASE_URL}/api/users/${id}`,
+        DELETE: (id) => `${API_BASE_URL}/api/users/${id}`
     },
-    PROJECTS: {
-        GET_ALL: `${API_BASE_URL}/api/projects`,
-        CREATE: `${API_BASE_URL}/api/projects`,
-        UPDATE: `${API_BASE_URL}/api/projects`,
-        DELETE: `${API_BASE_URL}/api/projects`
-    }
+    HEALTH: `${API_BASE_URL}/api/health`,
+    TEST_DB: `${API_BASE_URL}/api/test-db`
 };
 
 // Fonction utilitaire pour les requêtes API
@@ -46,8 +45,10 @@ export const apiRequest = async (endpoint, options = {}) => {
     });
 
     if (!response.ok) {
-        const error = await response.json().catch(() => ({ message: 'Erreur API' }));
-        throw new Error(error.message || `HTTP error! status: ${response.status}`);
+        const error = await response.json().catch(() => ({
+            message: `HTTP error! status: ${response.status}`
+        }));
+        throw new Error(error.message || error.error || `HTTP error! status: ${response.status}`);
     }
 
     return response.json();

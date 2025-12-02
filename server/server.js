@@ -3,419 +3,402 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
-const cookieParser = require('cookie-parser');
-require('dotenv').config();
+const path = require('path');
+const fs = require('fs');
 
-const app = express();
+// ==== CHARGEMENT INTELLIGENT DES VARIABLES D'ENVIRONNEMENT ====
+// Déterminer l'environnement
+const env = process.env.NODE_ENV || 'development';
+console.log(`🌍 Environnement détecté: ${env}`);
 
-// ==================== MIDDLEWARE AVEC LOGGING DÉTAILLÉ ====================
+// Liste des fichiers .env à essayer
+const envFiles = [
+  `.env.${env}.local`,
+  `.env.${env}`,
+  '.env.local',
+  '.env'
+];
 
-// Logging des requêtes entrantes
-app.use((req, res, next) => {
-  console.log('📍', new Date().toISOString(), req.method, req.url);
-  if (req.body && Object.keys(req.body).length > 0) {
-    console.log('📦 Body:', req.body);
+// Charger le premier fichier .env qui existe
+let envLoaded = false;
+for (const envFile of envFiles) {
+  const envPath = path.resolve(__dirname, envFile);
+  if (fs.existsSync(envPath)) {
+    require('dotenv').config({ path: envPath });
+    console.log(`✅ Fichier .env chargé: ${envFile}`);
+    envLoaded = true;
+    break;
   }
-  next();
-});
+}
 
-// CORS étendu
-app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:3000',
-    'https://bygagoos.vercel.app'
-  ],
+if (!envLoaded) {
+  console.warn('⚠️  Aucun fichier .env trouvé, utilisation des variables système');
+}
+
+// ==== CONFIGURATION DE L'APPLICATION ====
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+/**
+ * Configuration CORS étendue pour le développement
+ */
+const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'https://bygagoos.vercel.app'
+    ];
+
+    // En développement, accepter toutes les origines pour faciliter le debug
+    if (env === 'development') {
+      console.log(`🌐 CORS Development - Origin: ${origin}`);
+      return callback(null, true);
+    }
+
+    // En production, vérifier les origines autorisées
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn(`⚠️  Origin non autorisé: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+};
 
-// Sécurité
+app.use(cors(corsOptions));
+
+/**
+ * Configuration de sécurité Helmet
+ */
 app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 1000,
-  message: { error: 'Trop de requêtes, réessayez plus tard.' }
-});
-app.use('/api/', limiter);
+/**
+ * Middleware globaux
+ */
 
-// Middlewares standards
-app.use(morgan('dev'));
-app.use(cookieParser());
+// Rate limiting global
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200, // 200 requêtes par IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'TOO_MANY_REQUESTS',
+    message: 'Trop de requêtes depuis cette IP. Veuillez réessayer plus tard.'
+  }
+});
+
+app.use(globalLimiter);
+
+// Logging
+app.use(morgan(env === 'production' ? 'combined' : 'dev'));
+
+// Body parser
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// ==================== ROUTES DE TEST IMMÉDIATES ====================
+// Désactiver x-powered-by
+app.disable('x-powered-by');
 
-// Route santé
-app.get('/api/health', (req, res) => {
-  console.log('✅ Health check appelé');
+// ===== MIDDLEWARE DE LOGGING POUR DÉBOGAGE =====
+app.use((req, res, next) => {
+  console.log(`🌐 ${req.method} ${req.originalUrl}`);
+
+  // Log du body pour POST/PUT mais masquer les mots de passe
+  if (['POST', 'PUT'].includes(req.method) && req.body) {
+    const logBody = { ...req.body };
+    if (logBody.password) logBody.password = '***';
+    if (logBody.oldPassword) logBody.oldPassword = '***';
+    if (logBody.newPassword) logBody.newPassword = '***';
+    if (logBody.confirmPassword) logBody.confirmPassword = '***';
+    console.log('📦 Body:', logBody);
+  }
+
+  next();
+});
+
+/**
+ * Routes de base
+ */
+app.get('/', (req, res) => {
   res.json({
-    status: 'OK',
-    message: 'Backend opérationnel',
+    success: true,
+    service: 'ByGagoos API',
+    version: '2.1.0',
+    status: 'operational',
+    environment: env,
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/api/health',
+      testDb: '/api/test-db',
+      auth: {
+        register: 'POST /api/auth/register',
+        login: 'POST /api/auth/login',
+        profile: 'GET /api/auth/profile',
+        verify: 'GET /api/auth/verify'
+      }
+    }
+  });
+});
+
+app.get('/health', async (req, res) => {
+  res.json({
+    success: true,
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    services: {
+      api: 'healthy'
+    },
+    version: '2.1.0',
+    environment: env
+  });
+});
+
+app.get('/api/health', async (req, res) => {
+  res.json({
+    success: true,
+    status: 'healthy',
+    message: 'API is running!',
+    timestamp: new Date().toISOString(),
+    environment: env
+  });
+});
+
+app.get('/api/test-db', async (req, res) => {
+  try {
+    const db = require('./config/database');
+    const result = await db.query('SELECT CURRENT_TIMESTAMP as time');
+
+    res.json({
+      database: 'Connected ✅',
+      time: result.rows[0].time,
+      environment: env
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Database connection failed',
+      details: env === 'development' ? error.message : 'Internal error'
+    });
+  }
+});
+
+// ===== ROUTE DE TEST TEMPORAIRE =====
+app.post('/api/auth/register-test', async (req, res) => {
+  console.log('🔧 Route test /register-test appelée');
+  console.log('📝 Données reçues:', req.body);
+
+  // Réponse simple pour tester la connexion
+  res.json({
+    success: true,
+    message: 'Route test fonctionnelle ✅',
+    receivedData: {
+      ...req.body,
+      password: req.body.password ? '***' : undefined
+    },
     timestamp: new Date().toISOString()
   });
 });
 
-// Route test simple
-app.get('/api/test', (req, res) => {
-  console.log('🧪 Test route appelée');
-  res.json({
-    message: 'Test réussi - Backend fonctionne',
-    environment: process.env.NODE_ENV || 'development'
+// ===== ROUTE DE TEST LOGIN SIMULÉ =====
+app.post('/api/auth/login-test', async (req, res) => {
+  console.log('🔧 Route test /login-test appelée');
+  console.log('📝 Login attempt:', req.body.email);
+
+  // Simulation d'un succès pour admin@gagoos.com
+  if (req.body.email === 'admin@gagoos.com' && req.body.password === 'password') {
+    return res.json({
+      success: true,
+      message: 'Connexion test réussie',
+      token: 'test-jwt-token-for-development',
+      user: {
+        id: 1,
+        prenom: 'Admin',
+        nom: 'Gagoos',
+        email: 'admin@gagoos.com',
+        role: 'admin',
+        departement: 'Administration'
+      }
+    });
+  }
+
+  res.status(401).json({
+    success: false,
+    error: 'INVALID_CREDENTIALS',
+    message: 'Email ou mot de passe incorrect'
   });
 });
 
-// ==================== AUTHENTIFICATION SIMPLIFIÉE ====================
+// Import des routes
+try {
+  const authRoutes = require('./routes/auth');
+  app.use('/api/auth', authRoutes);
+  console.log('✅ Routes auth chargées');
+} catch (error) {
+  console.warn('⚠️  Routes auth non chargées:', error.message);
+}
 
-const demoUsers = {
-  'gerante@bygagoos.com': {
-    id: 1,
-    email: 'gerante@bygagoos.com',
-    nom: 'Gérante',
-    prenom: 'ByGagoos',
-    role: 'gerante',
-    password: 'demo123'
-  },
-  'contremaitre@bygagoos.com': {
-    id: 2,
-    email: 'contremaitre@bygagoos.com',
-    nom: 'Contremaître',
-    prenom: 'Equipe',
-    role: 'contremaitre',
-    password: 'demo123'
-  },
-  'salarie@bygagoos.com': {
-    id: 3,
-    email: 'salarie@bygagoos.com',
-    nom: 'Salarié',
-    prenom: 'Production',
-    role: 'salarie',
-    password: 'demo123'
-  },
-  'admin@gagoos.com': {
-    id: 4,
-    email: 'admin@gagoos.com',
-    nom: 'Admin',
-    prenom: 'Système',
-    role: 'admin',
-    password: 'password'
+try {
+  const productionRoutes = require('./routes/production');
+  app.use('/api/production', productionRoutes);
+  console.log('✅ Routes production chargées');
+} catch (error) {
+  console.warn('⚠️  Routes production non chargées:', error.message);
+}
+
+try {
+  const stockRoutes = require('./routes/stock');
+  app.use('/api/stock', stockRoutes);
+  console.log('✅ Routes stock chargées');
+} catch (error) {
+  console.warn('⚠️  Routes stock non chargées:', error.message);
+}
+
+try {
+  const dashboardRoutes = require('./routes/dashboard');
+  app.use('/api/dashboard', dashboardRoutes);
+  console.log('✅ Routes dashboard chargées');
+} catch (error) {
+  console.warn('⚠️  Routes dashboard non chargées:', error.message);
+}
+
+// Route pour la documentation
+app.get('/api/docs', (req, res) => {
+  res.json({
+    endpoints: {
+      auth: {
+        login: 'POST /api/auth/login',
+        register: 'POST /api/auth/register',
+        profile: 'GET /api/auth/profile',
+        verify: 'GET /api/auth/verify'
+      },
+      production: {
+        commandes: 'GET /api/production/commandes',
+        etapes: 'GET /api/production/etapes'
+      },
+      stock: {
+        overview: 'GET /api/stock/overview',
+        alertes: 'GET /api/stock/alertes'
+      },
+      dashboard: {
+        stats: 'GET /api/dashboard/stats',
+        activities: 'GET /api/dashboard/activities'
+      }
+    }
+  });
+});
+
+/**
+ * Gestion des erreurs 404
+ */
+app.use((req, res, next) => {
+  res.status(404).json({
+    success: false,
+    error: 'NOT_FOUND',
+    message: `Route ${req.method} ${req.originalUrl} non trouvée`,
+    environment: env
+  });
+});
+
+/**
+ * Middleware de gestion d'erreurs global
+ */
+app.use((err, req, res, next) => {
+  console.error('❌ Erreur serveur:', {
+    message: err.message,
+    stack: env === 'development' ? err.stack : undefined,
+    path: req.path,
+    method: req.method
+  });
+
+  const statusCode = err.status || err.statusCode || 500;
+
+  res.status(statusCode).json({
+    success: false,
+    error: err.name || 'INTERNAL_ERROR',
+    message: env === 'production' && statusCode === 500
+      ? 'Une erreur interne est survenue'
+      : err.message,
+    ...(env === 'development' ? { stack: err.stack } : {})
+  });
+});
+
+/**
+ * Démarrage du serveur
+ */
+const startServer = async () => {
+  try {
+    // Initialiser la base de données
+    try {
+      const { initializeDatabase } = require('./config/database');
+      const dbConnected = await initializeDatabase();
+
+      if (!dbConnected) {
+        console.warn('⚠️  Base de données non initialisée - fonctionnement limité');
+      } else {
+        console.log('✅ Base de données initialisée');
+      }
+    } catch (dbError) {
+      console.warn('⚠️  Échec initialisation base de données:', dbError.message);
+    }
+
+    // Démarrer le serveur
+    const server = app.listen(PORT, () => {
+      console.log('\n' + '='.repeat(50));
+      console.log('🚀 SERVEUR BYGAGOOS DÉMARRÉ AVEC SUCCÈS');
+      console.log('='.repeat(50));
+      console.log(`📍 Port: ${PORT}`);
+      console.log(`🌍 Environnement: ${env}`);
+      console.log(`⏰ Date: ${new Date().toLocaleString()}`);
+      console.log(`🔗 URL: http://localhost:${PORT}`);
+      console.log('='.repeat(50));
+      console.log('📋 ENDPOINTS DISPONIBLES:');
+      console.log(`   🏠  GET  http://localhost:${PORT}/`);
+      console.log(`   ❤️  GET  http://localhost:${PORT}/health`);
+      console.log(`   🗄️  GET  http://localhost:${PORT}/api/test-db`);
+      console.log(`   📝 POST  http://localhost:${PORT}/api/auth/register`);
+      console.log(`   🔑 POST  http://localhost:${PORT}/api/auth/login`);
+      console.log(`   🧪 POST  http://localhost:${PORT}/api/auth/register-test (test)`);
+      console.log(`   🧪 POST  http://localhost:${PORT}/api/auth/login-test (test)`);
+      console.log('='.repeat(50) + '\n');
+    });
+
+    // Gestion propre de l'arrêt
+    process.on('SIGTERM', () => {
+      console.log('🔻 Signal SIGTERM reçu, arrêt du serveur...');
+      server.close(() => {
+        console.log('✅ Serveur arrêté proprement');
+        process.exit(0);
+      });
+    });
+
+    process.on('SIGINT', () => {
+      console.log('🔻 Signal SIGINT reçu (Ctrl+C), arrêt du serveur...');
+      server.close(() => {
+        console.log('✅ Serveur arrêté proprement');
+        process.exit(0);
+      });
+    });
+
+  } catch (error) {
+    console.error('💥 Erreur critique au démarrage:', error);
+    process.exit(1);
   }
 };
 
-// ✅ AJOUT: ROUTE D'INSCRIPTION
-app.post('/api/auth/register', (req, res) => {
-  console.log('📝 REGISTER ATTEMPT:', req.body);
-
-  try {
-    const { prenom, nom, email, password, role } = req.body;
-
-    // Validation des champs requis
-    if (!prenom || !nom || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        error: 'Tous les champs obligatoires doivent être remplis'
-      });
-    }
-
-    // Vérifier si l'utilisateur existe déjà
-    if (demoUsers[email]) {
-      console.log('❌ User already exists:', email);
-      return res.status(400).json({
-        success: false,
-        error: 'Un utilisateur avec cet email existe déjà'
-      });
-    }
-
-    // Créer un nouvel ID
-    const newId = Object.keys(demoUsers).length + 1;
-
-    // Ajouter le nouvel utilisateur (en mémoire seulement)
-    demoUsers[email] = {
-      id: newId,
-      email: email,
-      nom: nom,
-      prenom: prenom,
-      role: role || 'salarie',
-      password: password
-    };
-
-    console.log('✅ New user registered:', email);
-
-    // Réponse de succès
-    res.status(201).json({
-      success: true,
-      token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI' + newId + 'IiwiZW1haWwiOiI' + email + 'iLCJyb2xlIjoi' + (role || 'salarie') + 'IiwiaWF0IjoxNzAwMDAwMDAwLCJleHAiOjE3MzE1MzYwMDB9.demo-register-token',
-      user: {
-        id: newId,
-        email: email,
-        nom: nom,
-        prenom: prenom,
-        role: role || 'salarie'
-      },
-      message: 'Compte créé avec succès'
-    });
-
-  } catch (error) {
-    console.error('💥 Register error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la création du compte'
-    });
-  }
-});
-
-// LOGIN - Version ultra simple
-app.post('/api/auth/login', (req, res) => {
-  console.log('🔐 LOGIN ATTEMPT:', req.body);
-
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        error: 'Email et mot de passe requis'
-      });
-    }
-
-    const user = demoUsers[email];
-
-    if (!user) {
-      console.log('❌ User not found:', email);
-      return res.status(401).json({
-        success: false,
-        error: 'Utilisateur non trouvé'
-      });
-    }
-
-    if (password !== user.password) {
-      console.log('❌ Wrong password for:', email);
-      return res.status(401).json({
-        success: false,
-        error: 'Mot de passe incorrect'
-      });
-    }
-
-    console.log('✅ Login successful for:', email);
-
-    // Réponse de succès
-    res.json({
-      success: true,
-      token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjEsImVtYWlsIjoiZ2VyYW50ZUBieWdhZ29vcy5jb20iLCJyb2xlIjoiZ2VyYW50ZSIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjoxNzMxNTM2MDAwfQ.demo-token-local',
-      user: {
-        id: user.id,
-        email: user.email,
-        nom: user.nom,
-        prenom: user.prenom,
-        role: user.role
-      },
-      message: `Connexion réussie - ${user.prenom} ${user.nom}`
-    });
-
-  } catch (error) {
-    console.error('💥 Login error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur interne du serveur'
-    });
-  }
-});
-
-// Route de vérification de token
-app.get('/api/auth/verify', (req, res) => {
-  console.log('🔍 Token verification');
-  res.json({
-    valid: true,
-    message: 'Token valide'
-  });
-});
-
-// Route de déconnexion
-app.post('/api/auth/logout', (req, res) => {
-  console.log('🚪 Logout request');
-  res.json({
-    success: true,
-    message: 'Déconnexion réussie'
-  });
-});
-
-// ==================== ROUTES MÉTIER COMPLÈTES ====================
-
-// Stock
-app.get('/api/stock/dashboard', (req, res) => {
-  console.log('📊 Stock dashboard appelé');
-  res.json({
-    totalItems: 156,
-    lowStockItems: 12,
-    outOfStockItems: 3,
-    totalValue: 45800000,
-    recentMovements: 24,
-    criticalAlerts: 5
-  });
-});
-
-app.get('/api/stock/categories', (req, res) => {
-  console.log('📦 Stock categories appelé');
-  const categories = [
-    { id: 1, name: 'Tissus Coton', itemCount: 45, lowStockCount: 3 },
-    { id: 2, name: 'Tissus Lin', itemCount: 28, lowStockCount: 2 },
-    { id: 3, name: 'Tissus Soie', itemCount: 15, lowStockCount: 1 }
-  ];
-  res.json(categories);
-});
-
-app.get('/api/stock/suppliers', (req, res) => {
-  console.log('🏭 Stock suppliers appelé');
-  const suppliers = [
-    { id: 1, name: 'Textile Madagascar', contact: '034 12 345 67', itemCount: 45 },
-    { id: 2, name: 'Soie Naturelle', contact: '032 98 765 43', itemCount: 28 }
-  ];
-  res.json(suppliers);
-});
-
-app.get('/api/stock/items', (req, res) => {
-  console.log('📋 Stock items appelé');
-  const items = [
-    { id: 1, name: 'Tissu Coton Blanc', category: 'Tissus Coton', currentStock: 45, minStock: 20, status: 'normal' },
-    { id: 2, name: 'Tissu Soie Naturelle', category: 'Tissus Soie', currentStock: 8, minStock: 10, status: 'low' }
-  ];
-  res.json(items);
-});
-
-app.get('/api/stock/movements', (req, res) => {
-  console.log('🔄 Stock movements appelé');
-  const movements = [
-    { id: 1, itemName: 'Tissu Coton Blanc', type: 'entrée', quantity: 25, date: '2024-01-15T08:30:00Z' },
-    { id: 2, itemName: 'Tissu Soie Naturelle', type: 'sortie', quantity: 5, date: '2024-01-15T10:15:00Z' }
-  ];
-  res.json(movements);
-});
-
-app.get('/api/stock/alerts', (req, res) => {
-  console.log('🚨 Stock alerts appelé');
-  const alerts = [
-    { id: 1, itemName: 'Fils Polyester Noir', type: 'critical', message: 'Stock critique - 3 unités restantes', currentStock: 3 }
-  ];
-  res.json(alerts);
-});
-
-// Production
-app.get('/api/production/orders', (req, res) => {
-  console.log('🏭 Production orders appelé');
-  const orders = [
-    { id: 1, orderNumber: 'CMD-2024-045', client: 'Boutique Soleil', status: 'en production' },
-    { id: 2, orderNumber: 'CMD-2024-044', client: 'Magasin Luna', status: 'en attente' }
-  ];
-  res.json(orders);
-});
-
-app.get('/api/production/teams', (req, res) => {
-  console.log('👥 Production teams appelé');
-  const teams = [
-    { id: 1, name: 'Équipe A', supervisor: 'Jean Rakoto', members: 4, activeOrders: 2 },
-    { id: 2, name: 'Équipe B', supervisor: 'Marie Ravao', members: 5, activeOrders: 3 }
-  ];
-  res.json(teams);
-});
-
-// RH
-app.get('/api/rh/employees', (req, res) => {
-  console.log('👨‍💼 RH employees appelé');
-  const employees = [
-    { id: 1, name: 'Jean Rakoto', position: 'Contremaître', department: 'Production', status: 'actif' },
-    { id: 2, name: 'Marie Ravao', position: 'Ouvrière', department: 'Production', status: 'actif' }
-  ];
-  res.json(employees);
-});
-
-// Comptabilité
-app.get('/api/comptabilite/transactions', (req, res) => {
-  console.log('💰 Comptabilité transactions appelé');
-  const transactions = [
-    { id: 1, date: '2024-01-15', description: 'Vente commande #CMD-2024-043', amount: 4500000, type: 'recette' },
-    { id: 2, date: '2024-01-14', description: 'Achat tissus', amount: -1250000, type: 'dépense' }
-  ];
-  res.json(transactions);
-});
-
-// Dashboard général
-app.get('/api/dashboard/overview', (req, res) => {
-  console.log('📈 Dashboard overview appelé');
-  res.json({
-    stats: {
-      totalOrders: 156,
-      pendingOrders: 23,
-      completedOrders: 133,
-      totalRevenue: 125800000,
-      activeTeams: 6,
-      productionToday: 189
-    }
-  });
-});
-
-// ==================== GESTION DES ERREURS ====================
-
-// Route 404
-app.use('/api/*', (req, res) => {
-  console.log('❌ 404 - Route not found:', req.originalUrl);
-  res.status(404).json({
-    error: 'Endpoint non trouvé',
-    path: req.originalUrl,
-    available_endpoints: [
-      'GET /api/health',
-      'GET /api/test',
-      'POST /api/auth/register', // ✅ AJOUTÉ
-      'POST /api/auth/login',
-      'GET /api/auth/verify',
-      'POST /api/auth/logout',
-      'GET /api/stock/dashboard',
-      'GET /api/production/orders',
-      'GET /api/rh/employees',
-      'GET /api/comptabilite/transactions'
-    ]
-  });
-});
-
-// Error handler
-app.use((error, req, res, next) => {
-  console.error('💥 Server error:', error);
-  res.status(500).json({
-    error: 'Erreur interne du serveur',
-    message: error.message
-  });
-});
-
-// ==================== DÉMARRAGE DU SERVEUR ====================
-
-const PORT = process.env.PORT || 3001;
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log('='.repeat(70));
-  console.log('🚀 BYGAGOOS SERVER - DÉMARRÉ AVEC SUCCÈS');
-  console.log('='.repeat(70));
-  console.log(`📍 Port: ${PORT}`);
-  console.log(`🌍 URL: http://localhost:${PORT}`);
-  console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log('='.repeat(70));
-  console.log('📋 Endpoints disponibles:');
-  console.log(`   ✅ Health: http://localhost:${PORT}/api/health`);
-  console.log(`   🧪 Test: http://localhost:${PORT}/api/test`);
-  console.log(`   📝 Register: http://localhost:${PORT}/api/auth/register`); // ✅ AJOUTÉ
-  console.log(`   🔐 Login: http://localhost:${PORT}/api/auth/login`);
-  console.log('='.repeat(70));
-  console.log('👤 Comptes de test:');
-  console.log('   gerante@bygagoos.com / demo123');
-  console.log('   contremaitre@bygagoos.com / demo123');
-  console.log('   salarie@bygagoos.com / demo123');
-  console.log('   admin@gagoos.com / password');
-  console.log('='.repeat(70));
-});
+// Démarrer le serveur
+if (require.main === module) {
+  startServer();
+}
 
 module.exports = app;

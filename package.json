@@ -11,8 +11,9 @@
     "build:client": "cd client && npm run build",
     "build:server": "cd server && npm run build",
     "start": "cd server && npm start",
-    "vercel-build": "cd client && npm run build",
-    "install:all": "npm install && cd client && npm install && cd ../server && npm install"
+    "vercel-build": "cd client && npm install && npm run build",
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
+    "fix-deps": "cd client && rm -rf node_modules package-lock.json && npm install && cd ../server && rm -rf node_modules package-lock.json && npm install && cd .. && npm install"
   },
   "repository": {
     "type": "git",

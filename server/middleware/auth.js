@@ -1,87 +1,90 @@
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/database');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'bygagoos_super_secret_key_change_in_production';
+// Utiliser un secret temporaire pour le développement
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-production';
+const JWT_ALGORITHM = 'HS256';
+const JWT_EXPIRES_IN = '24h';
 
-const auth = async (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
+/**
+ * Middleware d'authentification simplifié
+ */
+const authenticate = async (req, res, next) => {
+  const authHeader = req.headers.authorization;
 
-  if (!token) {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({
       success: false,
-      message: 'Token d\'accès requis'
+      error: 'AUTH_REQUIRED',
+      message: 'Token d\'authentification requis'
     });
   }
 
+  const token = authHeader.split(' ')[1];
+
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, {
+      algorithms: [JWT_ALGORITHM]
+    });
 
-    // Support multiple claim names
-    const tokenUserId = decoded && (decoded.id || decoded.userId || decoded.user_id || decoded.sub);
+    const userId = decoded.userId || decoded.id || decoded.sub;
 
-    if (!tokenUserId) {
+    if (!userId) {
       return res.status(401).json({
         success: false,
-        message: 'Token invalide: ID utilisateur manquant'
-      });
-    }
-
-    // Vérifier que l'utilisateur existe toujours
-    const userResult = await pool.query(
-      `SELECT id, prenom, nom, email, role, departement, is_active 
-       FROM users WHERE id = $1`,
-      [tokenUserId]
-    );
-
-    if (userResult.rows.length === 0) {
-      return res.status(401).json({
-        success: false,
-        message: 'Utilisateur non trouvé'
-      });
-    }
-
-    const user = userResult.rows[0];
-
-    if (!user.is_active) {
-      return res.status(401).json({
-        success: false,
-        message: 'Compte désactivé'
-      });
-    }
-
-    req.user = user;
-    next();
-  } catch (error) {
-    console.error('Erreur vérification token:', error);
-
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({
-        success: false,
-        message: 'Token expiré'
-      });
-    }
-
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({
-        success: false,
+        error: 'INVALID_TOKEN',
         message: 'Token invalide'
       });
     }
 
-    return res.status(500).json({
+    const result = await pool.query(
+      `SELECT 
+        id, prenom, nom, email, role, departement, 
+        phone, is_active, last_login, created_at
+       FROM utilisateurs 
+       WHERE id = ? AND is_active = 1`,
+      [userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({
+        success: false,
+        error: 'USER_NOT_FOUND',
+        message: 'Utilisateur non trouvé'
+      });
+    }
+
+    req.user = result.rows[0];
+    req.token = token;
+    next();
+  } catch (error) {
+    console.error('❌ Erreur authentification:', error.message);
+
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        error: 'TOKEN_EXPIRED',
+        message: 'Token expiré'
+      });
+    }
+
+    return res.status(401).json({
       success: false,
-      message: 'Erreur d\'authentification'
+      error: 'INVALID_TOKEN',
+      message: 'Token invalide'
     });
   }
 };
 
-// Middleware de vérification de rôle
-const requireRole = (roles) => {
+/**
+ * Middleware de vérification de rôle
+ */
+const requireRole = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({
         success: false,
+        error: 'UNAUTHORIZED',
         message: 'Non authentifié'
       });
     }
@@ -89,7 +92,8 @@ const requireRole = (roles) => {
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        message: 'Accès non autorisé pour votre rôle'
+        error: 'FORBIDDEN',
+        message: `Accès interdit pour le rôle: ${req.user.role}`
       });
     }
 
@@ -97,18 +101,46 @@ const requireRole = (roles) => {
   };
 };
 
-// Générer un token JWT
-const generateToken = (userId) => {
-  return jwt.sign(
-    { userId },
-    JWT_SECRET,
-    { expiresIn: '24h' }
-  );
+/**
+ * Générer un token JWT
+ */
+const generateToken = (userId, userData = {}) => {
+  const payload = {
+    userId,
+    role: userData.role,
+    email: userData.email,
+    iss: 'bygagoos-api',
+    iat: Math.floor(Date.now() / 1000)
+  };
+
+  return jwt.sign(payload, JWT_SECRET, {
+    expiresIn: JWT_EXPIRES_IN,
+    algorithm: JWT_ALGORITHM
+  });
+};
+
+/**
+ * Générer un token de rafraîchissement
+ */
+const generateRefreshToken = (userId) => {
+  const payload = {
+    userId,
+    type: 'refresh',
+    iss: 'bygagoos-api',
+    iat: Math.floor(Date.now() / 1000)
+  };
+
+  return jwt.sign(payload, JWT_SECRET, {
+    expiresIn: '7d',
+    algorithm: JWT_ALGORITHM
+  });
 };
 
 module.exports = {
-  auth,
+  authenticate,
   requireRole,
   generateToken,
-  JWT_SECRET
+  generateRefreshToken,
+  JWT_SECRET,
+  JWT_ALGORITHM
 };
