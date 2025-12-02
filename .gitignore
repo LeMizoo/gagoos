@@ -1,34 +1,99 @@
-# Dependencies
+# ==================== DEPENDENCIES ====================
 node_modules/
 */node_modules/
+.npm
+.yarn/
+.pnpm/
 
-# Environment variables
+# ==================== ENVIRONMENT ====================
 .env
 .env.*
-!.env.example
 
-# Build outputs
+# ==================== BUILD OUTPUTS ====================
 dist/
 build/
 .client/
 .server/
+.next/
+.nuxt/
+.vuepress/dist
+.serverless/
 
-# Logs
+# ==================== DATABASE FILES ====================
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*-journal
+*-wal
+*-shm
+server/bygagoos.db
+server/bygagoos.db-*
+server/config/database.js.backup-*
+
+# ==================== LOGS ====================
 logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# IDE
+# ==================== IDE & EDITORS ====================
 .vscode/
 .idea/
 *.swp
 *.swo
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# OS
+# ==================== OPERATING SYSTEM ====================
 .DS_Store
 Thumbs.db
+Desktop.ini
 
-# Vercel
+# ==================== DEPLOYMENT ====================
 .vercel
+.vercel/
+.railway/
+.netlify/
+
+# ==================== TESTING & COVERAGE ====================
+coverage/
+.nyc_output
+*.lcov
+
+# ==================== CACHE ====================
+.cache
+.parcel-cache
+.fusebox/
+.eslintcache
+
+# ==================== RUNTIME DATA ====================
+pids
+*.pid
+*.seed
+*.pid.lock
+node_repl_history
+
+# ==================== PACKAGE MANAGERS ====================
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+npm-debug.log*
+
+# ==================== UPLOADS & MEDIA ====================
+uploads/
+temp/
+tmp/
+
+# ==================== MISC ====================
+*.tgz
+.yarn-integrity
+.history
+*.orig
+*.bak

@@ -1,4 +1,4 @@
-# Logs
+# ==================== LOGS ====================
 logs
 *.log
 npm-debug.log*
@@ -6,15 +6,39 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+debug.log
+error.log
 
+# ==================== DEPENDENCIES ====================
 node_modules
+node_modules/
+.npm
+.yarn/
+.pnpm/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ==================== BUILD OUTPUTS ====================
 dist
 dist-ssr
 *.local
+build/
+.next/
+.nuxt/
+.vuepress/dist
+.serverless/
 
-# Editor directories and files
+# ==================== ENVIRONMENT ====================
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ==================== EDITOR DIRECTORIES AND FILES ====================
 .vscode/*
-!.vscode/extensions.json
 .idea
 .DS_Store
 *.suo
@@ -22,4 +46,40 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+*.swo
+*.swp
+
+# ==================== DEPLOYMENT ====================
 .vercel
+.vercel/
+.railway/
+.netlify/
+
+# ==================== CACHE ====================
+.cache
+.parcel-cache
+.fusebox/
+.eslintcache
+
+# ==================== TESTING ====================
+coverage/
+.nyc_output
+*.lcov
+__tests__/__snapshots__/
+
+# ==================== TYPESCRIPT ====================
+*.tsbuildinfo
+
+# ==================== PUBLIC FILES (Large) ====================
+public/large-assets/
+public/videos/
+public/*.mp4
+public/*.mov
+public/*.avi
+
+# ==================== MISC ====================
+*.tgz
+.yarn-integrity
+.history
+*.orig
+*.bak
